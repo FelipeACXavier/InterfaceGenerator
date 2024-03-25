@@ -1,0 +1,48 @@
+{
+  "name": "MySimpleCarModel",
+  "description": "A car model whose speed is controlled by an external model",
+  "authors": "Author's name",
+  "version": "1.0.0",
+  "formalism": "continuous",
+  "target": "fmi2",
+  "step": 1000,
+  "minimumstep": 100,
+  "lookahead": 5000,
+  "superdensetime": false,
+  "inputs": [
+    {
+      "id": 0,
+      "name": "Desired speed",
+      "type": "float",
+      "unit": "m/s"
+    },
+    {
+      "id": 1,
+      "name": "Load",
+      "description": "Here we only consider the load due to passenger mass",
+      "type": "uint",
+      "unit": "kg"
+    }
+  ],
+  "outputs": [
+    {
+      "id": 1000,
+      "name": "Current speed",
+      "type": "float",
+      "unit": "m/s"
+    }
+  ],
+  "parameters": [
+      {
+        "id": 0,
+        "name": "Mass",
+        "type": "uint",
+        "unit": "kg"
+      }
+  ],
+  "origin": [
+    "right",
+    "up",
+    "in"
+  ]
+}

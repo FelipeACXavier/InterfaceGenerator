@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dtig"
+version = "1.0"
+authors = [
+  {name="Felipe Xavier", email="f.d.azeredo.coutinho.xavier@student.tue.nl"},
+]
+description = "Library to support and facilitate the creation of interfaces for digital twins and co-simulation"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["interface", "digital", "twin"]
+
+# Dependencies
+dependencies = [
+    "protobuf == 3.20.3",
+    "FMPy == 0.3.20",
+    "plotly == 5.20.0",  # For testing this is quite nice
+]
