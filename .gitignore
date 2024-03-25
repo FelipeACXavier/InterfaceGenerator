@@ -154,6 +154,8 @@ cython_debug/
 
 # Compiled files
 **/build/**
+**/protobuf/**
+!protobuf
 
 # Reference files
 **/Reference-FMUs/**
