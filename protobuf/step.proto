@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/utils.proto";
+
+message MStep {
+    // Any is used since different engines use different data types
+    MNumber32 step        = 1;
+    MNumber32 micro_step  = 2;
+}

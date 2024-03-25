@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/return_code.proto";
+import "protobuf/utils.proto";
+import "protobuf/values.proto";
+
+message MReturnValue {
+  ReturnCode.EReturnCode code             = 1;
+  MString                error_message    = 2;
+
+  MValues                values           = 10;
+}

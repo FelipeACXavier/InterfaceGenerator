@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package dti.ReturnCode;
+
+enum EReturnCode {
+  UNKNOWN         = 0;
+  SUCCESS         = 1;
+  FAILURE         = 2;
+  UNKNOWN_OPTION  = 3;
+  UNKNOWN_COMMAND = 4;
+  INVALID_STATE   = 5;
+  INVALID_OPTION  = 6;
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/stop_mode.proto";
+
+message MStop {
+  Stop.EStopMode mode  = 1;
+}

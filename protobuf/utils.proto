@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package dti;
+
+option java_multiple_files = true;
+
+message MString {
+  string value  = 1;
+}
+
+message MU32 {
+  uint32 value  = 1;
+}
+
+message MU64 {
+  uint64 value  = 1;
+}
+
+message MI32 {
+  int32 value  = 1;
+}
+
+message MI64 {
+  int64 value  = 1;
+}
+
+message MF32 {
+  float value  = 1;
+}
+
+message MF64 {
+  double value  = 1;
+}
+
+message MBytes {
+  bytes value  = 1;
+}
+
+message MNumber32 {
+  oneof number {
+    MF32 fvalue = 1;
+    MU32 uvalue = 2;
+    MI32 ivalue = 3;
+  }
+}
+
+message MNumber64 {
+  oneof number {
+    MF64 fvalue = 1;
+    MU64 uvalue = 2;
+    MI64 ivalue = 3;
+  }
+}
+

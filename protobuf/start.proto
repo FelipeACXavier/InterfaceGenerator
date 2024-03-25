@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/step.proto";
+import "protobuf/utils.proto";
+import "protobuf/run_mode.proto";
+
+option java_multiple_files = true;
+
+message MStart {
+  MNumber32     start_time  = 1;
+  MNumber32     stop_time   = 2;
+  MStep         step_size   = 3;
+
+  Run.ERunMode  run_mode    = 10;
+}

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/utils.proto";
+
+option java_multiple_files = true;
+
+message MInitialize {
+  // Name of the simulation
+  MString simulation_name = 10;
+
+  // Name of the model
+  MString model_name      = 20;
+
+  // Configuration file
+  MString config_file     = 30;
+  MBytes  config_bytes    = 35;
+}

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/values.proto";
+
+option java_multiple_files = true;
+
+message MOutput {
+  // Values
+  MValues outputs = 1;
+}

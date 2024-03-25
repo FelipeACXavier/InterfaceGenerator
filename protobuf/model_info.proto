@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/utils.proto";
+
+option java_multiple_files = true;
+
+message MInfo {
+  MU32 id              = 1;
+  MString name         = 2;
+  MString description  = 3;
+  MString type         = 4;
+  MString unit         = 5;
+}
+
+message MModelInfo {
+  repeated MInfo inputs     = 1;
+  repeated MInfo outputs    = 2;
+  repeated MInfo parameters = 3;
+}

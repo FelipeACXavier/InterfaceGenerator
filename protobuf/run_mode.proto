@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package dti.Run;
+
+enum ERunMode {
+  UNKNOWN      = 0;
+  STEP         = 1;
+  CONTINUOUS   = 2;
+}

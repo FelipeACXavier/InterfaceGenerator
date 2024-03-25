@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dti;
+
+import "protobuf/identifiers.proto";
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+
+message MValues {
+  // Id or name of the values
+  MIdentifiers identifiers            = 1;
+
+  // Values
+  repeated google.protobuf.Any values = 10;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dti;
+
+option java_multiple_files = true;
+
+message MIds {
+  repeated uint32 ids = 1;
+}
+
+message MNames {
+  repeated string names = 1;
+}
+
+message MIdentifiers {
+  oneof identifiers {
+    MIds    ids     = 1;
+    MNames  names   = 2;
+  }
+}
