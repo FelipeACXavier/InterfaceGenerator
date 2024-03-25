@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
   def generate_constructor(self) -> str:
     return """
+class Wrapper:
   def __init__(self):
     self.state      : State  = State.UNINITIALIZED
     self.server     : socket.socket = None
@@ -83,9 +84,6 @@ class State(Enum):
   STOPPED       = 6
 
 """
-
-  def generate_class(self):
-    return "class Wrapper:"
 
   def generate_destructor(self):
     return """
@@ -517,9 +515,6 @@ class State(Enum):
   STOPPED       = 6
 
 """
-
-  def generate_class(self):
-    return "class Wrapper:"
 
   def generate_destructor(self):
     return """

@@ -22,7 +22,6 @@ class ServerGeneratorFMI2(ServerGenerator):
     with open(self.output_file, "w") as file:
       file.write(self.generate_imports())
       file.write(self.generate_states())
-      file.write(self.generate_class())
       file.write(self.generate_constructor())
       file.write(self.generate_destructor())
       file.write(self.generate_run())
@@ -151,7 +150,6 @@ class ClientGeneratorFMI2(ClientGenerator):
     with open(self.output_file, "w") as file:
       file.write(self.generate_imports())
       file.write(self.generate_states())
-      file.write(self.generate_class())
       file.write(self.generate_constructor())
       file.write(self.generate_destructor())
       file.write(self.generate_run())
