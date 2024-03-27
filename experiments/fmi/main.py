@@ -29,7 +29,7 @@ def main():
         LOG_ERROR(f'Unknown target {config[KEY_TARGET]}')
         return
 
-    output_dir = "build/"
+    output_dir = os.getcwd() + "/build/"
     try:
         os.mkdir(output_dir)
     except FileExistsError as e:
@@ -40,7 +40,7 @@ def main():
         LOG_ERROR(result)
         return
 
-    protobuf.generate_python(os.getcwd())
+    protobuf.generate_python(output_dir)
 
     if server_generator:
         server_result = server_generator.generate(output_dir + output_name, config)
