@@ -26,12 +26,12 @@ class GeneratorBase():
         self.function_definition = None
         self.callbacks = {
             KEY_IMPORTS         : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
-            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : "", KEY_SELF: False},
             KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
             KEY_STATES          : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
             KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
             KEY_CONSTRUCTOR     : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: True},
             KEY_DESTRUCTOR      : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: True},
+            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : "", KEY_SELF: True},
             KEY_MESSAGE_HANDLER : {KEY_NAME : "handle_message", KEY_BODY : "", KEY_SELF: True},
             KEY_RUN_SERVER      : {KEY_NAME : "run_server",     KEY_BODY : "", KEY_SELF: True},
             KEY_RUN_CLIENT      : {KEY_NAME : "run_client",     KEY_BODY : "", KEY_SELF: True},
@@ -43,18 +43,20 @@ class GeneratorBase():
                 KEY_GET_OUTPUT  : {KEY_NAME : "parse_get_output", KEY_BODY : "", KEY_SELF : True},
                 KEY_ADVANCE     : {KEY_NAME : "parse_advance",    KEY_BODY : "", KEY_SELF : True},
                 KEY_INITIALIZE  : {KEY_NAME : "parse_initialize", KEY_BODY : "", KEY_SELF : True},
+                KEY_MODEL_INFO  : {KEY_NAME : "parse_model_info", KEY_BODY : "", KEY_SELF : True},
             },
             KEY_CALLBACK : {
                 KEY_IMPORTS     : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
                 KEY_CONSTRUCTOR : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
                 KEY_DESTRUCTOR  : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_RUN         : {KEY_NAME : "run_model",            KEY_BODY : "", KEY_SELF: False},
+                KEY_RUN         : {KEY_NAME : "run_model",            KEY_BODY : "", KEY_SELF: True},
                 KEY_STOP        : {KEY_NAME : "stop_callback",        KEY_BODY : "", KEY_SELF: True},
                 KEY_START       : {KEY_NAME : "start_callback",       KEY_BODY : "", KEY_SELF: True},
                 KEY_SET_INPUT   : {KEY_NAME : "set_input_callback",   KEY_BODY : "", KEY_SELF: True},
                 KEY_GET_OUTPUT  : {KEY_NAME : "get_output_callback",  KEY_BODY : "", KEY_SELF: True},
                 KEY_ADVANCE     : {KEY_NAME : "advance_callback",     KEY_BODY : "", KEY_SELF: True},
                 KEY_INITIALIZE  : {KEY_NAME : "initialize_callback",  KEY_BODY : "", KEY_SELF: True},
+                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback", KEY_BODY : "", KEY_SELF : True},
             },
             }
 
@@ -70,9 +72,7 @@ class GeneratorBase():
         regex = fr'^@({name}\b)(\(([a-z_]*)\))?'
         matches = [m for m in re.finditer(regex, data, flags=re.MULTILINE)]
         # Small sanity checks
-        if len(matches) == 0:
-            return VoidResult.failed(f'Template {name} was not defined')
-        elif maximum is not None and len(matches) > maximum:
+        if maximum is not None and len(matches) > maximum:
             return VoidResult.failed(f'Only {maximum} @{name} is allowed in the template')
 
         for match in matches:
@@ -114,10 +114,10 @@ class GeneratorBase():
                 function_id = definition[1].strip() if callback_name is None else callback_name
                 function_args = self.arguments_from_key(definition[2].strip())
 
+                LOG_DEBUG(f'Function {function_id} with args {function_args}')
                 # Set default callback name
                 default = self.function_definition(function_id, function_args)
-                body = body[:definition.start()] + default + \
-                    body[definition.end():]
+                body = body[:definition.start()] + default + body[definition.end():]
 
             if not decorator_arg:
                 if name == KEY_METHOD:

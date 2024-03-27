@@ -8,6 +8,7 @@ from time import sleep
 
 # Protobuf imports
 import protobuf.stop_pb2 as dti_stop
+import protobuf.info_pb2 as dti_info
 import protobuf.start_pb2 as dti_start
 import protobuf.utils_pb2 as dti_utils
 import protobuf.input_pb2 as dti_input
@@ -18,6 +19,7 @@ import protobuf.return_code_pb2 as dti_code
 import protobuf.run_mode_pb2 as dti_run_mode
 import protobuf.dt_message_pb2 as dti_message
 import protobuf.return_value_pb2 as dti_return
+import protobuf.model_info_pb2 as dti_model_info
 import protobuf.initialize_pb2 as dti_initialize
 
 from google.protobuf import any_pb2
@@ -56,7 +58,7 @@ def run(self) -> None:
     self.model_thread.join()
 
 @parse(initialize)
-def parse_initialize(message: dti_initialize.MInitialize) -> Message:
+def parse_initialize(message) -> Message:
     if self.state != State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
 
@@ -68,7 +70,7 @@ def parse_initialize(message: dti_initialize.MInitialize) -> Message:
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
 @parse(start)
-def parse_start(self, message : dti_start.MStart) -> Message:
+def parse_start(message) -> Message:
     # If the model was not yet initialized, we cannot start
     if self.state == State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot start in state {self.state.name}')
@@ -76,7 +78,7 @@ def parse_start(self, message : dti_start.MStart) -> Message:
     return @callback(start)(message)
 
 @parse(stop)
-def parse_stop(self, message : dti_stop.MStop) -> Message:
+def parse_stop(message) -> Message:
     ret = @callback(stop)(message)
     if ret.code != dti_code.SUCCESS:
         return ret
@@ -85,8 +87,8 @@ def parse_stop(self, message : dti_stop.MStop) -> Message:
     self.state = State.STOPPED
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@parse(set_input)
-def parse_set_input(self, message : dti_values.MValues) -> Message:
+@parse(setinput)
+def parse_set_input(message) -> Message:
     # If the model was not yet initialized, we cannot set inputs
     if self.state == State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot set input in state {self.state.name}')
@@ -103,7 +105,7 @@ def parse_set_input(self, message : dti_values.MValues) -> Message:
 
             fval = wrappers_pb2.FloatValue()
             if value.Unpack(fval):
-                return @callback(set_input)(identifier, fval.value)
+                return @callback(setinput)(identifier, fval.value)
             else:
                 return self.return_code(dti_code.INVALID_OPTION, 'Non-float values not yet supported')
 
@@ -112,21 +114,21 @@ def parse_set_input(self, message : dti_values.MValues) -> Message:
 
     elif message.identifiers.HasField("ids"):
         n_inputs = len(message.identifiers.ids.ids)
-        return @callback(set_input)(identifier, fval.value)
+        return @callback(setinput)(identifier, fval.value)
         return self.return_code(dti_code.UNKNOWN_OPTION, 'Non-string ids not implemented')
     else:
         return self.return_code(dti_code.INVALID_OPTION, 'No identifiers provided')
 
     return self.return_code(dti_code.SUCCESS)
 
-@parse(get_output)
-def parse_get_output(self, message : dti_values.MValues) -> Message:
+@parse(getoutput)
+def parse_get_output(message) -> Message:
     if self.state == State.UNINITIALIZED:
-        return self.return_code(dti_code.INVALID_STATE, f'Cannot get output in state {{self.state.name}}')
+        return self.return_code(dti_code.INVALID_STATE, f'Cannot get output in state {self.state.name}')
 
     if message.identifiers.HasField("names"):
         n_outputs = len(message.identifiers.names.names)
-        values = @callback(get_output)(message.identifiers.names.names)
+        values = @callback(getoutput)(message.identifiers.names.names)
         if len(values) != n_outputs:
             return self.return_code(dti_code.FAILURE, 'Failed to get all outputs')
 
@@ -153,16 +155,16 @@ def parse_get_output(self, message : dti_values.MValues) -> Message:
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
 @parse(advance)
-def parse_advance(self, message : dti_advance.MAdvance) -> Message:
+def parse_advance(message) -> Message:
     if self.state != State.STEPPING:
-        return self.return_code(dti_code.INVALID_STATE, f'Cannot advance in state {{self.state.name}}')
+        return self.return_code(dti_code.INVALID_STATE, f'Cannot advance in state {self.state.name}')
 
     return @callback(advance)(message)
 
 @parse(initialize)
-def parse_initialize(self, message : dti_initialize.MInitialize) -> Message:
+def parse_initialize(message) -> Message:
     if self.state != State.UNINITIALIZED:
-        return self.return_code(dti_code.INVALID_STATE, f'Cannot initialize in state {{self.state.name}}')
+        return self.return_code(dti_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
 
     ret = @callback(initialize)(message)
     if ret.code != dti_code.SUCCESS:
@@ -170,6 +172,15 @@ def parse_initialize(self, message : dti_initialize.MInitialize) -> Message:
 
     self.state = State.INITIALIZING
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
+
+@parse(modelinfo)
+def parse_model_info() -> Message:
+    print("Parsing model info 0")
+    if self.state == State.UNINITIALIZED:
+        return self.return_code(dti_code.INVALID_STATE, f'Cannot get model info in state {self.state.name}')
+
+    print("Parsing model info 1")
+    return @callback(modelinfo)()
 
 @messagehandler
 def parse_message(self, data : str) -> Message:
@@ -180,18 +191,21 @@ def parse_message(self, data : str) -> Message:
         print('Failed to parse incoming message')
         return bytes()
 
+    print(f"Received message: {message}")
     if message.HasField("stop"):
         return @parse(stop)(message.stop)
     elif message.HasField("start"):
         return @parse(start)(message.start)
     elif message.HasField("input"):
-        return @parse(set_input)(message.input.inputs)
+        return @parse(setinput)(message.input.inputs)
     elif message.HasField("output"):
-        return @parse(get_output)(message.output.outputs)
+        return @parse(getoutput)(message.output.outputs)
     elif message.HasField("advance"):
         return @parse(advance)(message.advance)
     elif message.HasField("initialize"):
         return @parse(initialize)(message.initialize)
+    else:
+        return @parse(modelinfo)()
 
     return dti_return.MReturnValue(code=dti_code.UNKNOWN_COMMAND)
 

@@ -89,7 +89,7 @@ class ServerGenerator(GeneratorBase):
             return VoidResult.failed(f'Failed to read method: {result}')
 
         result = self.parse_template(
-            data, KEY_PARSE, has_argument=True, maximum=7)
+            data, KEY_PARSE, has_argument=True, maximum=8)
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
@@ -105,6 +105,11 @@ class ServerGenerator(GeneratorBase):
             data, KEY_CALLBACK, has_argument=True, maximum=10)
         if not result.is_success():
             return VoidResult.failed(f'Failed to read callback file: {result}')
+
+        result = self.parse_template(
+            data, KEY_METHOD, has_argument=False, maximum=None)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read method: {result}')
 
         # print(json.dumps(self.callbacks, indent=2))
         return VoidResult()
@@ -224,7 +229,7 @@ class ServerGenerator(GeneratorBase):
 
     def arguments_from_key(self, arguments):
         if KEY_SELF not in arguments:
-            return "self, " + arguments
+            return ("self, " + arguments).strip().rstrip(",")
 
         return arguments
 
@@ -236,14 +241,7 @@ class ServerGenerator(GeneratorBase):
 # =======================================================================
 class ClientGenerator(GeneratorBase):
     def __init__(self):
-        self.callbacks = {
-            "stop": {KEY_NAME: "stop_callback", KEY_BODY: "pass"},
-            "start": {KEY_NAME: "start_callback", KEY_BODY: "pass"},
-            "set_input": {KEY_NAME: "set_input_callback", KEY_BODY: "pass"},
-            "get_output": {KEY_NAME: "get_output_callback", KEY_BODY: "pass"},
-            "advance": {KEY_NAME: "advance_callback", KEY_BODY: "pass"},
-            "initialize": {KEY_NAME: "initialize_callback", KEY_BODY: "pass"},
-        }
+       super().__init__()
 
     def generate(self, output_file: str, config: ModelConfigurationBase) -> VoidResult:
         return VoidResult.failed("Not implemented")

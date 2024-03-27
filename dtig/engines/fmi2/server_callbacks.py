@@ -20,7 +20,7 @@ self.value_references = {}
 
 
 @callback(initialize)
-def parse_initialize(message : dti_initialize.MInitialize) -> Message:
+def parse_initialize(message) -> Message:
     self.model_name = self.parse_and_assign_optional(message, "model_name")
     if self.model_name is None:
         return self.return_code(dti_code.UNKNOWN_OPTION, f'No model provided')
@@ -28,7 +28,7 @@ def parse_initialize(message : dti_initialize.MInitialize) -> Message:
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
 @callback(advance)
-def parse_advance(self, message : dti_advance.MAdvance) -> Message:
+def parse_advance(self, message) -> Message:
     if message.HasField("step_size"):
         step_size = self.parse_number(message.step_size.step)
         if step_size is None:
@@ -39,12 +39,12 @@ def parse_advance(self, message : dti_advance.MAdvance) -> Message:
     self.step = True
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@callback(set_input)
+@callback(setinput)
 def parse_input(reference, value):
     self.fmu.setReal([self.value_references[reference]], [value])
     return self.return_code(dti_code.SUCCESS)
 
-@callback(get_output)
+@callback(getoutput)
 def parse_output(incoming_references) -> Message:
     n_outputs = len(incoming_references)
     references = [self.value_references[ref] for ref in incoming_references]
@@ -56,14 +56,14 @@ def parse_output(incoming_references) -> Message:
     return values
 
 @callback(stop)
-def parse_stop(self, message : dti_stop.MStop) -> Message:
+def parse_stop(message) -> Message:
     print(f'Stopping with: {message.mode}')
     self.step = True
     self.state = State.STOPPED
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
 @callback(start)
-def parse_start(self, message : dti_start.MStart) -> Message:
+def parse_start(message) -> Message:
     self.start_time = self.parse_and_assign_optional(message, "start_time")
     if self.start_time is None:
         return self.return_code(dti_code.INVALID_OPTION, f'Start time must be a float')
@@ -92,8 +92,43 @@ def parse_start(self, message : dti_start.MStart) -> Message:
 
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
+@callback(modelinfo)
+def parse_model_info() -> Message:
+    if not self.model_name:
+        return self.return_code(dti_code.FAILURE, f'Model is not yet known')
+
+    model_description = read_model_description(self.model_name)
+
+    return_value = dti_return.MReturnValue(code=dti_code.SUCCESS)
+    for variable in model_description.modelVariables:
+        if variable.causality == "input":
+            return_value.model_info.inputs.append(self.variable_to_info(variable))
+        elif variable.causality == "output":
+            return_value.model_info.outputs.append(self.variable_to_info(variable))
+        elif variable.causality == "parameter":
+            return_value.model_info.parameters.append(self.variable_to_info(variable))
+
+    return return_value
+
+@method
+def variable_to_info(variable):
+    info = dti_info.MInfo()
+    if variable.valueReference:
+        info.id.value = variable.valueReference
+
+    if variable.name:
+        info.name.value = variable.name
+
+    if variable.type:
+        info.type.value = variable.type
+
+    if variable.quantity:
+        info.unit.value = variable.quantity
+
+    return info
+
 @callback(run)
-def run_model(self) -> None:
+def run_model() -> None:
     with self.condition:
         self.condition.wait_for(lambda: self.state == State.INITIALIZING or self.state == State.STOPPED)
         if self.state == State.STOPPED:
