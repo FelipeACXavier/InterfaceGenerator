@@ -1,8 +1,5 @@
 import os
 
-from dtig.tools import python
-
-from dtig.common.logging import *
 from dtig.common.result import *
 from dtig.common.model_configuration_base import ModelConfigurationBase
 
