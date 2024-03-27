@@ -43,4 +43,4 @@ class VoidResult():
     return self.success
 
   def __str__(self):
-    return self.message
+    return self.message if self.message else "Success"
