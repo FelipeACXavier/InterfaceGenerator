@@ -2,13 +2,17 @@ syntax = "proto3";
 
 package dti;
 
-import "protobuf/return_code.proto";
 import "protobuf/utils.proto";
 import "protobuf/values.proto";
+import "protobuf/model_info.proto";
+import "protobuf/return_code.proto";
 
 message MReturnValue {
   ReturnCode.EReturnCode code             = 1;
   MString                error_message    = 2;
 
-  MValues                values           = 10;
+  oneof data {
+    MValues              values           = 10;
+    MModelInfo           model_info       = 11;
+  }
 }
