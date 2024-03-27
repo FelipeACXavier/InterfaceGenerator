@@ -9,6 +9,10 @@ class LogLevel(Enum):
   INFO = 2
   DEBUG = 3
 
+def start_logger(level):
+    global CURRENT_LOG_LEVEL
+    CURRENT_LOG_LEVEL = level
+
 def LOG_ERROR(message : str):
   log(LogLevel.ERROR, message)
 
@@ -32,5 +36,6 @@ def printLevel(level : LogLevel) -> str:
     return "[\033[96mD\033[00m]"
 
 def log(level: LogLevel, message : str) -> None:
-  caller = getframeinfo(stack()[2][0])
-  print(f"{datetime.now()} {printLevel(level)} {basename(caller.filename)}:{caller.lineno}: {message}")
+    if level.value <= CURRENT_LOG_LEVEL.value:
+        caller = getframeinfo(stack()[2][0])
+        print(f"{datetime.now()} {printLevel(level)} {basename(caller.filename)}:{caller.lineno}: {message}")
