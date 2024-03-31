@@ -1,5 +1,8 @@
 KEY_TARGET="target"
 
+KEY_CLIENT = "client"
+KEY_SERVER = "server"
+
 KEY_ID = "id"
 KEY_TYPE = "type"
 KEY_UNIT = "unit"
@@ -42,3 +45,7 @@ KEY_INITIALIZE = "initialize"
 KEY_MODEL_INFO = "modelinfo"
 KEY_BODY = "body"
 KEY_SELF = "self"
+KEY_MEMBER = "member"
+KEY_PRIVATE = "private"
+KEY_PUBLIC = "public"
+KEY_NEW="new"

@@ -1,4 +1,5 @@
 import re
+import json
 
 from abc import abstractmethod
 
@@ -25,17 +26,42 @@ class GeneratorBase():
         self.function_regex = None
         self.function_definition = None
         self.callbacks = {
-            KEY_IMPORTS         : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
-            KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
-            KEY_STATES          : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
-            KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: False},
-            KEY_CONSTRUCTOR     : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: True},
-            KEY_DESTRUCTOR      : {KEY_NAME : None,             KEY_BODY : "", KEY_SELF: True},
-            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : "", KEY_SELF: True},
-            KEY_MESSAGE_HANDLER : {KEY_NAME : "handle_message", KEY_BODY : "", KEY_SELF: True},
-            KEY_RUN_SERVER      : {KEY_NAME : "run_server",     KEY_BODY : "", KEY_SELF: True},
-            KEY_RUN_CLIENT      : {KEY_NAME : "run_client",     KEY_BODY : "", KEY_SELF: True},
-            KEY_METHOD          : {KEY_NAME : None,             KEY_BODY : [], KEY_SELF: True},
+            KEY_IMPORTS         : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_STATES          : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_CONSTRUCTOR     : {
+                KEY_NAME : None,
+                KEY_BODY : "",
+                KEY_SELF: True,
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True}
+            },
+            KEY_DESTRUCTOR      : {
+                KEY_NAME : None,
+                KEY_BODY : "",
+                KEY_SELF: True,
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True}
+            },
+            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : "",  KEY_SELF: True},
+            KEY_MESSAGE_HANDLER : {KEY_NAME : "handle_message", KEY_BODY : "",  KEY_SELF: True},
+            KEY_RUN_SERVER      : {KEY_NAME : "run_server",     KEY_BODY : "",  KEY_SELF: True},
+            KEY_RUN_CLIENT      : {KEY_NAME : "run_client",     KEY_BODY : "",  KEY_SELF: True},
+            KEY_METHOD          : {
+                KEY_NAME : None,
+                KEY_BODY : [],
+                KEY_SELF: True,
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True}
+            },
+            KEY_MEMBER          : {
+                KEY_NAME : None,
+                KEY_BODY : [],
+                KEY_SELF: False,
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False}
+            },
             KEY_PARSE : {
                 KEY_STOP        : {KEY_NAME : "parse_stop",       KEY_BODY : "", KEY_SELF : True},
                 KEY_START       : {KEY_NAME : "parse_start",      KEY_BODY : "", KEY_SELF : True},
@@ -56,9 +82,13 @@ class GeneratorBase():
                 KEY_GET_OUTPUT  : {KEY_NAME : "get_output_callback",  KEY_BODY : "", KEY_SELF: True},
                 KEY_ADVANCE     : {KEY_NAME : "advance_callback",     KEY_BODY : "", KEY_SELF: True},
                 KEY_INITIALIZE  : {KEY_NAME : "initialize_callback",  KEY_BODY : "", KEY_SELF: True},
-                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback", KEY_BODY : "", KEY_SELF : True},
+                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback",  KEY_BODY : "", KEY_SELF : True},
             },
+            KEY_NEW             : {},
             }
+
+    def new_callback(self, key, data):
+        self.callbacks[KEY_NEW][key] = data
 
     def generate(self, output_file : str, config : ModelConfigurationBase) -> VoidResult:
         raise Exception("Not implemented")
@@ -91,7 +121,7 @@ class GeneratorBase():
 
             # Search for the next decorator
             # @ in the middle of a function are replaced later
-            end = re.search(fr'^@', updated_data, flags=re.MULTILINE)
+            end = re.search(fr'^@(?!classname[^\s])', updated_data, flags=re.MULTILINE)
             offset = (len(data) - len(updated_data))
             function_end = len(data) - 1 if end is None else end.end() - 1 + offset
 
@@ -108,11 +138,10 @@ class GeneratorBase():
             if callback[KEY_SELF]:
                 definition = re.search(self.function_regex, body)
                 if not definition:
+                    LOG_WARNING(f'\n{body}')
                     return VoidResult.failed(f'Could not find function definition for: {name}')
 
-                # 0 is the match as a whole, so the interesting part starts from index 1
-                function_id = definition[1].strip() if callback_name is None else callback_name
-                function_args = self.arguments_from_key(definition[2].strip())
+                function_id, function_args = self.function_from_key(definition, callback_name)
 
                 LOG_DEBUG(f'Function {function_id} with args {function_args}')
                 # Set default callback name
@@ -124,6 +153,7 @@ class GeneratorBase():
                     self.callbacks[name][KEY_BODY].append("\n" + body + "\n")
                 elif name == KEY_CLASS_NAME:
                     self.callbacks[name][KEY_NAME] = body
+                    break
                 else:
                     self.callbacks[name][KEY_BODY] = "\n" + body + "\n"
             else:
@@ -141,11 +171,7 @@ class GeneratorBase():
                 break
 
             offset = (len(contents) - len(iter_body))
-            decorator = iter_body[match.start():match.end()]
-            decorator_name = match[1]
-            callback_name = match[3]
-
-            replacement = self.name_from_key(decorator_name, callback_name)
+            replacement = self.name_from_key(match.groups())
             contents = contents[:match.start() + offset] + replacement + contents[match.end() + offset:]
 
             iter_body = iter_body[match.end():]
@@ -155,12 +181,15 @@ class GeneratorBase():
     def is_valid_key(self, key):
         return key and key in self.callbacks[KEY_CALLBACK].keys()
 
+    def get_definitions(self):
+        return self.callbacks
+
     @abstractmethod
-    def arguments_from_key(self, arguments):
+    def function_from_key(self, groups, default_name):
         raise Exception("arguments_from_key must be implemented")
 
     @abstractmethod
-    def name_from_key(self, name, callback):
+    def name_from_key(self, groups):
         raise Exception("name_from_key must be implemented")
 
 

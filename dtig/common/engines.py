@@ -1,1 +1,2 @@
 ENGINE_FMI2 = "fmi2"
+ENGINE_HLA_RTI1516 = "hla_rti1516"

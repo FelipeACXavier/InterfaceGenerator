@@ -218,20 +218,30 @@ class ServerGenerator(GeneratorBase):
 
         return body
 
-    def name_from_key(self, name, callback):
+    def name_from_key(self, groups):
+        name = groups[0]
+        args = groups[1]
+        callback = groups[2]
+
         if callback:
             if self.is_valid_key(callback):
                 return f'self.{self.callbacks[name][callback][KEY_NAME]}'
             else:
-                return  f'self.{self.callbacks[name][KEY_NAME]}({callback})'
+                return f'self.{self.callbacks[name][KEY_NAME]}{args}'
         else:
-            return f'{self.callbacks[name][KEY_NAME]}()'
+            if name in self.callbacks:
+                return f'{self.callbacks[name][KEY_NAME]}{args if args else ""}'
+            else:
+                return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
 
-    def arguments_from_key(self, arguments):
-        if KEY_SELF not in arguments:
-            return ("self, " + arguments).strip().rstrip(",")
+    def function_from_key(self, groups, default_name):
+        function_id = groups[1].strip() if default_name is None else default_name
+        function_args = groups[2].strip()
 
-        return arguments
+        if KEY_SELF not in function_args:
+            function_args = ("self, " + function_args).strip().rstrip(",")
+
+        return function_id, function_args
 
 
 # =======================================================================
