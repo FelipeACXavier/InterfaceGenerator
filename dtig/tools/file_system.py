@@ -71,3 +71,9 @@ def run_command(command, tail=True):
         return VoidResult.failed(f'Failed to run command {command}')
 
     return VoidResult()
+
+def create_dir(dir):
+    try:
+        os.mkdir(dir)
+    except FileExistsError as e:
+        pass

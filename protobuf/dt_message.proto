@@ -7,6 +7,7 @@ import "protobuf/start.proto";
 import "protobuf/input.proto";
 import "protobuf/output.proto";
 import "protobuf/advance.proto";
+import "protobuf/parameter.proto";
 import "protobuf/model_info.proto";
 import "protobuf/initialize.proto";
 
@@ -19,5 +20,6 @@ message MDTMessage {
     MStop       stop        = 5;
     MStart      start       = 6;
     MModelInfo  model_info  = 7;
+    MParameter  parameter   = 8;
   }
 }

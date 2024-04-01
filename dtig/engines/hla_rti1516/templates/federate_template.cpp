@@ -10,7 +10,6 @@
 
 #include <string.h>
 
-#include "logging.h"
 #include "@>ambassador_header"
 
 #include "protobuf/dt_message.pb.h"
@@ -20,7 +19,9 @@
 #include "protobuf/start.pb.h"
 #include "protobuf/stop.pb.h"
 #include "protobuf/output.pb.h"
+#include "protobuf/parameter.pb.h"
 
+#define MSG_SIZE 1024
 #define PORT 8080
 #define HOST "127.0.0.1"
 
@@ -74,15 +75,15 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   try
   {
     rtiamb->createFederationExecution(L"ExampleFederation", convertStringToWstring(fom));
-    LOG_INFO("Created Federation");
+    std::cout << "Created Federation" << std::endl;
   }
   catch (FederationExecutionAlreadyExists exists)
   {
-    LOG_INFO("Didn't create federation, it already existed");
+    std::cout << "Didn't create federation, it already existed" << std::endl;
   }
   catch (ErrorReadingFDD error)
   {
-    LOG_ERROR("%s", error.what().c_str());
+    std::wcout << error.what() << std::endl;
     return;
   }
 
@@ -95,11 +96,11 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   mName = federateName;
 
   rtiamb->joinFederationExecution(convertStringToWstring(federateName), convertStringToWstring("ExampleFederation"), *fedamb);
-  LOG_INFO("Joined Federation as %s", federateName.c_str());
+  std::cout << "Joined Federation as " << federateName << std::endl;
 
   if ((mClient = socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
-    LOG_ERROR("Socket creation error");
+    std::cout << "Socket creation error" << std::endl;
     return;
   }
 
@@ -111,14 +112,14 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   // Convert IPv4 and IPv6 addresses from text to binary form
   if (inet_pton(AF_INET, HOST, &serv_addr.sin_addr) <= 0)
   {
-    LOG_ERROR("Invalid address/ Address not supported");
+    std::cout << "Invalid address/ Address not supported" << std::endl;
     return;
   }
 
-  LOG_INFO("Connection to common server at %s:%u", HOST, port);
+  std::cout << "Connection to common server at " << HOST << ":" << port << std::endl;
   if (connect(mClient, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
   {
-    LOG_ERROR("Connection Failed");
+    std::cout << "Connection Failed" << std::endl;
     return;
   }
 
@@ -131,7 +132,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   auto initRet = SendMessage(message);
   if (initRet.code() != dti::ReturnCode::SUCCESS)
   {
-    LOG_ERROR("Failed to initialize: %s", initRet.error_message().value().c_str());
+    std::cout << "Failed to initialize: " << initRet.error_message().value() << std::endl;
     return;
   }
 
@@ -145,7 +146,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   /// has already been registered, we'll get a callback saying it failed,
   /// but we don't care about that, as long as someone registered it
   rtiamb->registerFederationSynchronizationPoint(convertStringToWstring(READY_TO_RUN), toVariableLengthData(""));
-  LOG_INFO("SynchronizationPoint registered");
+  std::cout << "SynchronizationPoint registered" << std::endl;
   while (fedamb->isAnnounced == false)
   {
     rtiamb->evokeCallback(12.0);
@@ -167,7 +168,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   auto startRet = SendMessage(sMessage);
   if (startRet.code() != dti::ReturnCode::SUCCESS)
   {
-    LOG_ERROR("Failed to start: %s", startRet.error_message().value().c_str());
+    std::cout << "Failed to start: " << initRet.error_message().value() << std::endl;
     return;
   }
 
@@ -177,7 +178,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   /// tell the RTI we are ready to move past the sync point and then wait
   /// until the federation has synchronized on
   rtiamb->synchronizationPointAchieved(convertStringToWstring(READY_TO_RUN));
-  LOG_INFO("Achieved sync point: %s, waiting for federation...", READY_TO_RUN);
+  std::cout << "Achieved sync point: " << READY_TO_RUN << ", waiting for federation..." << std::endl;
   while (fedamb->isReadyToRun == false)
   {
     rtiamb->evokeCallback(12.0);
@@ -189,7 +190,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   // in this section we enable/disable all time policies
   // note that this step is optional!
   enableTimePolicy();
-  LOG_INFO("Time Policy Enabled");
+  std::cout << "Time Policy Enabled" << std::endl;
 
   //////////////////////////////
   // 7. publish and subscribe
@@ -197,13 +198,12 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   // in this section we tell the RTI of all the data we are going to
   // produce, and all the data we want to know about
   publishAndSubscribe();
-  LOG_INFO("Published and Subscribed");
+  std::cout << "Published and Subscribed" << std::endl;
 
   /////////////////////////////////////
   // 8. register an object to update
   /////////////////////////////////////
   ObjectInstanceHandle objectHandle = registerObject();
-  LOG_INFO("Registered Object, handle=%ls", objectHandle.toString().c_str());
 
   dti::MDTMessage aMessage;
   dti::MAdvance advanceMessage;
@@ -221,14 +221,14 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     auto ret = SendMessage(aMessage);
     if (ret.code() == dti::ReturnCode::INVALID_STATE)
     {
-      LOG_WARNING("Stopped");
+      std::cout << "Stopped" << std::endl;
       break;
     }
 
     sendInteraction();
 
     advanceTime(STEP);
-    LOG_INFO("Time Advanced to %.2lf", fedamb->federateTime);
+    std::cout << "Time Advanced to " << fedamb->federateTime << std::endl;
   }
 
   waitForUser();
@@ -240,20 +240,18 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   auto stopRet = SendMessage(stMessage);
   if (stopRet.code() != dti::ReturnCode::SUCCESS)
-    LOG_ERROR("Failed to stop: %s", stopRet.error_message().value().c_str());
-  else
-    LOG_INFO("Stopped server");
+    std::cout << "Failed to start: " << stopRet.error_message().value() << std::endl;
+
   //////////////////////////////////////
   // 10. delete the object we created
   //////////////////////////////////////
   deleteObject(objectHandle);
-  LOG_INFO("Deleted Object, handle=%ls", objectHandle.toString().c_str());
 
   ////////////////////////////////////
   // 11. resign from the federation
   ////////////////////////////////////
   rtiamb->resignFederationExecution(NO_ACTION);
-  LOG_INFO("Resigned from Federation");
+  std::cout << "Resigned from Federation" << std::endl;
 
   ////////////////////////////////////////
   // 12. try and destroy the federation
@@ -263,15 +261,15 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   try
   {
     rtiamb->destroyFederationExecution(L"ExampleFederation");
-    LOG_INFO("Destroyed Federation");
+    std::cout << "Destroyed Federation" << std::endl;
   }
   catch (FederationExecutionDoesNotExist dne)
   {
-    LOG_INFO("No need to destroy federation, it doesn't exist");
+    std::cout << "No need to destroy federation, it doesn't exist" << std::endl;
   }
   catch (FederatesCurrentlyJoined fcj)
   {
-    LOG_INFO("Didn't destroy federation, federates still joined");
+    std::cout << "Didn't destroy federation, federates still joined" << std::endl;
   }
 }
 
@@ -284,14 +282,14 @@ void initializeHandles()
   }
   catch (NameNotFound error)
   {
-    LOG_ERROR("Could not find: %s", error.what().c_str());
+    std::wcout << "Failed to initialize handles: " << error.what() << std::endl;
   }
 }
 
 @method
 void waitForUser()
 {
-  LOG_INFO(" >>>>>>>>>> Press Enter to Continue <<<<<<<<<<");
+  std::cout << " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" << std::endl;
   (void)getchar();
 }
 
@@ -326,18 +324,7 @@ void enableTimePolicy()
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-    auto object = converter.to_bytes(theObject.toString());
-    LOG_INFO("Attribute received handle=%s, count=%u", object.c_str(), theAttributeValues.size());
-
-    for (auto i = theAttributeValues.begin(); i != theAttributeValues.end(); i++)
-    {
-      std::string param = converter.to_bytes(i->first.toString());
-      std::string value = std::string((char*)i->second.data(), i->second.size());
-      LOG_INFO("attrHandle=%s, attrValue=%s", param.c_str(), value.c_str());
-    }
-
-    LOG_INFO("");
+    @>callback(setparameter)(theObject, theAttributeValues);
   };
 
   fedamb->interactionReceived = [this](rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues) {
@@ -345,6 +332,7 @@ void publishAndSubscribe()
   };
 
   @>callback(subscribe)
+  @>callback(publish)
 }
 
 @method
@@ -356,42 +344,13 @@ ObjectInstanceHandle registerObject()
 @method
 rti1516::VariableLengthData toVariableLengthData(const char* s)
 {
-  // rti1516::VariableLengthData variableLengthData;
-  // if (s)
-  //   variableLengthData.setData(s, strlen(s));
   return toData(s);
 }
 
 @method
 void updateAttributeValues(ObjectInstanceHandle objectHandle)
 {
-  ////////////////////////////////////////////////
-  /// create the necessary container and values
-  ///////////////////////////////////////////////
-  /// create the collection to store the values in, as you can see
-  /// this is quite a lot of work
-  // AttributeHandleValueMap attributes;
-
-  /// generate the new values
-  // char aaValue[16], abValue[16], acValue[16];
-  // sprintf(aaValue, "aa:%f", getLbts());
-  // sprintf(abValue, "ab:%f", getLbts());
-  // sprintf(acValue, "ac:%f", getLbts());
-  // attributes[aaHandle] = toVariableLengthData(mName.c_str());
-  // attributes[abHandle] = toVariableLengthData(mName.c_str());
-  // attributes[acHandle] = toVariableLengthData(mName.c_str());
-
-  ///////////////////////////
-  /// do the actual update
-  ///////////////////////////
-  // LOG_INFO("Attribute: %s %s %s", aaValue, abValue, acValue);
-  // rtiamb->updateAttributeValues(objectHandle, attributes, toVariableLengthData("hi!"));
-
-  // /// note that if you want to associate a particular timestamp with the
-  // /// update. here we send another update, this time with a timestamp:
-  // RTI1516fedTime time = fedamb->federateTime + fedamb->federateLookahead;
-  // LOG_INFO("Timed attribute: %s %s %s", aaValue, abValue, acValue);
-  // rtiamb->updateAttributeValues(objectHandle, attributes, toVariableLengthData("hi!"), time);
+  @>callback(getparameter)(objectHandle);
 }
 
 @method
@@ -436,8 +395,8 @@ dti::MReturnValue SendMessage(const google::protobuf::Message& message)
   auto toSend = message.SerializeAsString();
   send(mClient, toSend.c_str(), toSend.size(), 0);
 
-  char buffer[1024] = {0};
-  if (read(mClient, buffer, 1024 - 1) <= 0)
+  char buffer[MSG_SIZE] = {0};
+  if (read(mClient, buffer, MSG_SIZE - 1) <= 0)
   {
     result.set_code(dti::ReturnCode::INVALID_STATE);
     result.mutable_error_message()->set_value("Server disconnected");
@@ -507,7 +466,7 @@ int main(int argc, char *argv[])
     // Start server
     if (execvp("@>server_cmd", args) < 0)
     {
-      LOG_ERROR("Failed to start server");
+      std::cout << "Failed to start server" << std::endl;
       return -1;
     }
   }
@@ -530,14 +489,14 @@ int main(int argc, char *argv[])
     else
     {
       if (!name)
-        LOG_ERROR("No name given");
+        std::cout << "No name given" << std::endl;
       if (!fom)
-        LOG_ERROR("No FOM location given");
+        std::cout << "No FOM location given" << std::endl;
     }
   }
   else
   {
-    LOG_ERROR("Fork failed");
+    std::cout << "Fork failed" << std::endl;
     return -1;
   }
 

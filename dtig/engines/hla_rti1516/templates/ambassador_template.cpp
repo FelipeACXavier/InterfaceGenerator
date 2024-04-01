@@ -39,19 +39,20 @@ double convertTime(LogicalTime const& theTime)
 @method
 void synchronizationPointRegistrationSucceeded(std::wstring const& label) throw(FederateInternalError)
 {
-  LOG_INFO("Successfully registered sync point: %ls", label.c_str());
+  std::wcout << "Successfully registered sync point: " << label << std::endl;
 }
 
 @method
 void synchronizationPointRegistrationFailed(std::wstring const& label, SynchronizationFailureReason reason) throw(FederateInternalError)
 {
-  LOG_INFO("Failed to register sync point: %ls", label.c_str());
+  std::wcout << "Failed to register sync point: " << label << std::endl;
 }
 
 @method
 void announceSynchronizationPoint(std::wstring const& label, VariableLengthData const& theUserSuppliedTag) throw(FederateInternalError)
 {
-  LOG_INFO("Synchronization point announced: %ls", label.c_str());
+  std::wcout << "Synchronization point announced: " << label << std::endl;
+
   std::wstring compare = L"ReadyToRun";
   if (wcscmp(label.c_str(), compare.c_str()) == 0)
     this->isAnnounced = true;
@@ -60,7 +61,7 @@ void announceSynchronizationPoint(std::wstring const& label, VariableLengthData 
 @method
 void federationSynchronized(std::wstring const& label) throw(FederateInternalError)
 {
-  LOG_INFO("Federation Synchronized: %ls", label.c_str());
+  std::wcout << "Federation Synchronized: " << label << std::endl;
   std::wstring compair = L"ReadyToRun";
   if (wcscmp(label.c_str(), compair.c_str()) == 0)
     this->isReadyToRun = true;
@@ -264,7 +265,6 @@ void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
-  LOG_INFO("Object Removed 1: handle= %ls", theObject.toString().c_str());
 }
 
 @method
@@ -274,7 +274,6 @@ void removeObjectInstance(ObjectInstanceHandle theObject,
                           LogicalTime const& theTime,
                           OrderType receivedOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
-  LOG_INFO("Object Removed 2: handle= %ls", theObject.toString().c_str());
 }
 
 @method
@@ -287,5 +286,4 @@ void removeObjectInstance(ObjectInstanceHandle theObject,
                                                                   InvalidLogicalTime,
                                                                   FederateInternalError)
 {
-  LOG_INFO("Object Removed 3: handle= %ls", theObject.toString().c_str());
 }

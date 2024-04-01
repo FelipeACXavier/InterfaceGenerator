@@ -6,6 +6,8 @@ from pathlib import Path
 from dtig.common.keys import *
 from dtig.common.result import *
 from dtig.common.logging import *
+
+from dtig.tools.file_system import create_dir
 from dtig.common.model_configuration_base import ModelConfigurationBase
 
 from dtig.interface.cpp_generator import HppGenerator, CppGenerator
@@ -19,8 +21,11 @@ OUTPUT_HANDLER = "mOutputHandler"
 
 class ClientGeneratorRTI1516():
     def __init__(self, output_file):
-        self.federate_h_callbacks = f'{Path(output_file).parent.absolute()}/federate_callbacks.h'
-        self.federate_cpp_callbacks = f'{Path(output_file).parent.absolute()}/federate_callbacks.cpp'
+        template_dir = f'{Path(output_file).parent.absolute()}/templates'
+        create_dir(template_dir)
+
+        self.federate_h_callbacks = f'{template_dir}/federate_callbacks.h'
+        self.federate_cpp_callbacks = f'{template_dir}/federate_callbacks.cpp'
 
         self.server_cmd = None
         self.server_path = None
@@ -92,6 +97,44 @@ class ClientGeneratorRTI1516():
         self.server_path = {KEY_NAME: server_path, KEY_BODY: "", KEY_SELF: False}
 
     def generate_model_config(self):
+        h_body = ""
+        cpp_body = ""
+
+        h, cpp = self.generate_model_members()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_set_input()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_get_output()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_set_param()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_get_parameter()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_subscriptions()
+        h_body += h
+        cpp_body += cpp
+
+        h, cpp = self.generate_model_publications()
+        h_body += h
+        cpp_body += cpp
+
+        with open(self.federate_h_callbacks, "w") as f:
+            f.write(h_body)
+
+        with open(self.federate_cpp_callbacks, "w") as f:
+            f.write(cpp_body)
+
+    def generate_model_members(self) -> str:
         h_body = f'@callback({KEY_MEMBER})\n'
         cpp_body = f'@callback({KEY_INITIALIZE})\n'
 
@@ -107,47 +150,20 @@ class ClientGeneratorRTI1516():
         h_body += h
         cpp_body += cpp
 
-        h, cpp = self.generate_model_set_input()
-        h_body += h
-        cpp_body += cpp
-
-        h, cpp = self.generate_model_get_output()
-        h_body += h
-        cpp_body += cpp
-
-        h, cpp = self.generate_model_subscriptions()
-        h_body += h
-        cpp_body += cpp
-
-        with open(self.federate_h_callbacks, "w") as f:
-            f.write(h_body)
-
-        with open(self.federate_cpp_callbacks, "w") as f:
-            f.write(cpp_body)
+        return h_body, cpp_body
 
     def generate_model_inputs(self) -> str:
         h_body = ""
         cpp_body = ""
 
-        if self.config.has("inputs"):
-            namespaces = dict()
-            for p in self.config["inputs"]:
-                if p["namespace"] not in namespaces.keys():
-                    namespaces[p["namespace"]] = [p]
-                else:
-                    namespaces[p["namespace"]].append(p)
-
-            if len(namespaces.keys()) != 1:
-                LOG_ERROR(f'Currently, the tool only supports inputs in a single namespace')
-                return ""
-
+        if self.config.has(KEY_INPUTS):
+            h_body += f'rti1516::InteractionClassHandle {INPUT_HANDLER};\n'
             h_body += f'std::map<rti1516::ParameterHandle, std::string> {INPUT_HANDLER}s;\n'
-            for k, parameters in namespaces.items():
-                h_body += f'rti1516::InteractionClassHandle {INPUT_HANDLER};\n'
-                cpp_body += f'\t\t{INPUT_HANDLER} = rtiamb->getInteractionClassHandle(L"{k}");\n'
 
-                for p in parameters:
-                    cpp_body += f'\t\t{INPUT_HANDLER}s.insert({{rtiamb->getParameterHandle({INPUT_HANDLER}, L"{p["name"]}"), "{p["name"]}"}});\n'
+            cpp_body += f'\t\t{INPUT_HANDLER} = rtiamb->getInteractionClassHandle(L"{self.config[KEY_INPUTS][0][KEY_NAMESPACE]}");\n'
+
+            for item in self.config[KEY_INPUTS]:
+                cpp_body += f'\t\t{INPUT_HANDLER}s.insert({{rtiamb->getParameterHandle({INPUT_HANDLER}, L"{item[KEY_NAME]}"), "{item[KEY_NAME]}"}});\n'
 
         return h_body, cpp_body
 
@@ -155,25 +171,14 @@ class ClientGeneratorRTI1516():
         h_body = ""
         cpp_body = ""
 
-        if self.config.has("outputs"):
-            namespaces = dict()
-            for p in self.config["outputs"]:
-                if p["namespace"] not in namespaces.keys():
-                    namespaces[p["namespace"]] = [p]
-                else:
-                    namespaces[p["namespace"]].append(p)
-
-            if len(namespaces.keys()) != 1:
-                LOG_ERROR(f'Currently, the tool only supports outputs in a single namespace')
-                return ""
-
+        if self.config.has(KEY_OUTPUTS):
+            h_body += f'rti1516::InteractionClassHandle {OUTPUT_HANDLER};\n'
             h_body += f'std::map<std::string, rti1516::ParameterHandle> {OUTPUT_HANDLER}s;\n'
-            for k, parameters in namespaces.items():
-                h_body += f'rti1516::InteractionClassHandle {OUTPUT_HANDLER};\n'
-                cpp_body += f'\t\t{OUTPUT_HANDLER} = rtiamb->getInteractionClassHandle(L"{k}");\n'
 
-                for p in parameters:
-                    cpp_body += f'\t\t{OUTPUT_HANDLER}s.insert({{"{p["name"]}", rtiamb->getParameterHandle({OUTPUT_HANDLER}, L"{p["name"]}")}});\n'
+            cpp_body += f'\t\t{OUTPUT_HANDLER} = rtiamb->getInteractionClassHandle(L"{self.config[KEY_OUTPUTS][0][KEY_NAMESPACE]}");\n'
+
+            for item in self.config[KEY_OUTPUTS]:
+                cpp_body += f'\t\t{OUTPUT_HANDLER}s.insert({{"{item[KEY_NAME]}", rtiamb->getParameterHandle({OUTPUT_HANDLER}, L"{item[KEY_NAME]}")}});\n'
 
         return h_body, cpp_body
 
@@ -181,32 +186,20 @@ class ClientGeneratorRTI1516():
         h_body = ""
         cpp_body = ""
 
-        if self.config.has("parameters"):
-            namespaces = dict()
-            for p in self.config["parameters"]:
-                if p["namespace"] not in namespaces.keys():
-                    namespaces[p["namespace"]] = [p]
-                else:
-                    namespaces[p["namespace"]].append(p)
+        if self.config.has(KEY_PARAMETERS):
+            h_body += f'rti1516::ObjectClassHandle {PARAMETER_HANDLER};\n'
+            h_body += f'std::map<std::string, rti1516::AttributeHandle> {PARAMETER_HANDLER}s;\n'
 
-            if len(namespaces.keys()) != 1:
-                LOG_ERROR(f'Currently, the tool only supports parameters in a single namespace')
-                return ""
-
-            h_body += f'rti1516::AttributeHandleSet {PARAMETER_HANDLER}s;\n'
-            for k, parameters in namespaces.items():
-                h_body += f'rti1516::ObjectClassHandle {PARAMETER_HANDLER};\n'
-                cpp_body += f'\t\t{PARAMETER_HANDLER} = rtiamb->getObjectClassHandle(L"{k}");\n'
-
-                for p in parameters:
-                    cpp_body += f'\t\t{PARAMETER_HANDLER}s.insert(rtiamb->getAttributeHandle({PARAMETER_HANDLER}, L"{p["name"]}"));\n'
+            cpp_body += f'\t\t{PARAMETER_HANDLER} = rtiamb->getObjectClassHandle(L"{self.config[KEY_PARAMETERS][0][KEY_NAMESPACE]}");\n'
+            for item in self.config[KEY_PARAMETERS]:
+                cpp_body += f'\t\t{PARAMETER_HANDLER}s.insert({{"{item[KEY_NAME]}", rtiamb->getAttributeHandle({PARAMETER_HANDLER}, L"{item[KEY_NAME]}")}});\n'
 
         return h_body, cpp_body
 
     def generate_model_set_input(self) -> str:
         h_body = ""
         cpp_body = ""
-        if not self.config.has("inputs"):
+        if not self.config.has(KEY_INPUTS):
             return h_body, cpp_body
 
         h_body = f'\n@callback({KEY_SET_INPUT})\n'
@@ -216,13 +209,12 @@ class ClientGeneratorRTI1516():
         cpp_body += "void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues)\n{\n"
         cpp_body += "\tdti::MInput inputMessage;\n"
 
-        # for o in self.config["inputs"]:
         cpp_body += "\tfor (auto i = parameterValues.begin(); i != parameterValues.end(); ++i)\n"
         cpp_body += "\t{\n"
         cpp_body += "\t\tstd::string item = mInputHandlers[i->first];\n"
         cpp_body += "\t\tinputMessage.mutable_inputs()->mutable_identifiers()->mutable_names()->add_names(item);\n"
-        for i, cfg in enumerate(self.config["inputs"]):
-            cpp_body += f'\t\t{"if" if i == 0 else "else if"} (item == "{cfg["name"]}")\n'
+        for i, cfg in enumerate(self.config[KEY_INPUTS]):
+            cpp_body += f'\t\t{"if" if i == 0 else "else if"} (item == "{cfg[KEY_NAME]}")\n'
             cpp_body += "\t\t{\n"
             if cfg["type"] == "float":
                 cpp_body += f'\t\t\tdti::MF32 value;\n'
@@ -240,7 +232,7 @@ class ClientGeneratorRTI1516():
 
         cpp_body += "\t\telse\n"
         cpp_body += "\t\t{\n"
-        cpp_body += '\t\t\tLOG_ERROR("Unknown input: %s", item.c_str());\n'
+        cpp_body += '\t\t\tstd::cout << "Unknown input: " << item << std::endl;\n'
         cpp_body += '\t\t\treturn;\n'
         cpp_body += "\t\t}\n"
 
@@ -250,7 +242,7 @@ class ClientGeneratorRTI1516():
         cpp_body += '\t*message.mutable_input() = inputMessage;\n'
         cpp_body += '\tdti::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dti::ReturnCode::SUCCESS)\n\t'
-        cpp_body += '\tLOG_ERROR("Failed to set inputs: %s", ret.error_message().value().c_str());\n'
+        cpp_body += '\tstd::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;\n'
 
         cpp_body += '}\n'
 
@@ -259,7 +251,7 @@ class ClientGeneratorRTI1516():
     def generate_model_get_output(self) -> str:
         h_body = ""
         cpp_body = ""
-        if not self.config.has("outputs"):
+        if not self.config.has(KEY_OUTPUTS):
             return h_body, cpp_body
 
         h_body += f'\n@callback({KEY_GET_OUTPUT})\n'
@@ -269,34 +261,33 @@ class ClientGeneratorRTI1516():
         cpp_body += "void GetOutput()\n{\n"
         cpp_body += "\tdti::MOutput outputMessage;\n"
 
-        if self.config.has("outputs"):
-            for o in self.config["outputs"]:
-                cpp_body += f'\toutputMessage.mutable_outputs()->mutable_identifiers()->mutable_names()->add_names("{o["name"]}");\n'
+        if self.config.has(KEY_OUTPUTS):
+            for o in self.config[KEY_OUTPUTS]:
+                cpp_body += f'\toutputMessage.mutable_outputs()->mutable_identifiers()->mutable_names()->add_names("{o[KEY_NAME]}");\n'
 
         cpp_body += '\tdti::MDTMessage message;\n'
         cpp_body += '\t*message.mutable_output() = outputMessage;\n'
         cpp_body += '\tdti::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dti::ReturnCode::SUCCESS)\n\t{\n'
-        cpp_body += '\t\tLOG_ERROR("Failed to get outputs: %s", ret.error_message().value().c_str());\n'
+        cpp_body += '\t\tstd::cout << "Failed to get outputs: " << ret.error_message().value() << std::endl;\n'
         cpp_body += '\t\treturn;\n\t}\n\n'
 
         cpp_body += "\tParameterHandleValueMap parameters;\n"
-        # cpp_body += "for (int i = 0; i < ret.values().values_size(); ++i)\n{{"
-        for index, o in enumerate(self.config["outputs"]):
-            cpp_body += f'\tstd::string id{o["name"]} = ret.values().identifiers().names().names({index});\n'
+        for index, o in enumerate(self.config[KEY_OUTPUTS]):
+            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers().names().names({index});\n'
             if o["type"] == "float":
-                cpp_body += f'\tdti::MF32 value{o["name"]};\n'
+                cpp_body += f'\tdti::MF32 value{o[KEY_NAME]};\n'
             elif o["type"] == "double":
-                cpp_body += f'\tdti::MF64 value{o["name"]};\n'
+                cpp_body += f'\tdti::MF64 value{o[KEY_NAME]};\n'
             elif o["type"] == "int32":
-                cpp_body += f'\tdti::MI32 value{o["name"]};\n'
+                cpp_body += f'\tdti::MI32 value{o[KEY_NAME]};\n'
             elif o["type"] == "uint32":
-                cpp_body += f'\tdti::MU32 value{o["name"]};\n'
+                cpp_body += f'\tdti::MU32 value{o[KEY_NAME]};\n'
 
-            cpp_body += f'\tif (ret.values().values({index}).UnpackTo(&value{o["name"]}))\n'
+            cpp_body += f'\tif (ret.values().values({index}).UnpackTo(&value{o[KEY_NAME]}))\n'
             cpp_body += "\t{\n"
-            cpp_body += f'\t\t{o["type"]} v{o["name"]} = value{o["name"]}.value();\n'
-            cpp_body += f'\t\tparameters[mOutputHandlers.at(id{o["name"]})] = toData<{o["type"]}>(&v{o["name"]});\n'
+            cpp_body += f'\t\t{o["type"]} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
+            cpp_body += f'\t\tparameters[mOutputHandlers.at(id{o[KEY_NAME]})] = toData<{o["type"]}>(&v{o[KEY_NAME]});\n'
             cpp_body += "\t}\n\n"
 
         cpp_body += f'\trtiamb->sendInteraction({OUTPUT_HANDLER}, parameters, toVariableLengthData(mName.c_str()));\n'
@@ -304,18 +295,141 @@ class ClientGeneratorRTI1516():
 
         return h_body, cpp_body
 
+    def generate_model_set_param(self) -> str:
+        h_body = ""
+        cpp_body = ""
+        if not self.config.has(KEY_PARAMETERS):
+            return h_body, cpp_body
+
+        h_body = f'\n@callback({KEY_SET_PARAM})\n'
+        h_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes);\n"
+
+        cpp_body = f'\n@callback({KEY_SET_PARAM})\n'
+        cpp_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)\n{\n"
+        cpp_body += "\tdti::MParameter paramMessage;\n"
+
+        cpp_body += "\tfor (auto i = attributes.begin(); i != attributes.end(); ++i)\n"
+        cpp_body += "\t{\n"
+        cpp_body += "\t\tstd::string item;\n"
+        cpp_body += f'\t\tfor (auto it = {PARAMETER_HANDLER}s.begin(); it != {PARAMETER_HANDLER}s.end(); ++it)\n'
+        cpp_body += f'\t\t\tif (it->second == i->first)\n'
+        cpp_body += "\t\t\t{\n"
+        cpp_body += "\t\t\t\titem = it->first;\n"
+        cpp_body += "\t\t\t\tbreak;\n"
+        cpp_body += "\t\t\t}\n\n"
+
+        cpp_body += "\t\tif (item.empty())\n"
+        cpp_body += "\t\t\tcontinue;\n\n"
+
+        cpp_body += "\t\tparamMessage.mutable_parameters()->mutable_identifiers()->mutable_names()->add_names(item);\n"
+        for i, cfg in enumerate(self.config[KEY_PARAMETERS]):
+            cpp_body += f'\t\t{"if" if i == 0 else "else if"} (item == "{cfg[KEY_NAME]}")\n'
+            cpp_body += "\t\t{\n"
+            if cfg["type"] == "float":
+                cpp_body += f'\t\t\tdti::MF32 value;\n'
+            elif cfg["type"] == "double":
+                cpp_body += f'\t\t\tdti::MF64 value;\n'
+            elif cfg["type"] == "int32":
+                cpp_body += f'\t\t\tdti::MI32 value;\n'
+            elif cfg["type"] == "uint32":
+                cpp_body += f'\t\t\tdti::MU32 value;\n'
+
+            cpp_body += f'\t\t\tvalue.set_value(fromData<{cfg["type"]}>(i->second));\n'
+            cpp_body += "\t\t\tparamMessage.mutable_parameters()->add_values()->PackFrom(value);\n"
+
+            cpp_body += "\t\t}\n"
+
+        cpp_body += "\t\telse\n"
+        cpp_body += "\t\t{\n"
+        cpp_body += '\t\t\tstd::cout << "Unknown input: " << item << std::endl;\n'
+        cpp_body += '\t\t\treturn;\n'
+        cpp_body += "\t\t}\n"
+
+        cpp_body += "\t}\n\n"
+
+        cpp_body += '\tdti::MDTMessage message;\n'
+        cpp_body += '\t*message.mutable_parameter() = paramMessage;\n'
+        cpp_body += '\tdti::MReturnValue ret = SendMessage(message);\n'
+        cpp_body += '\tif (ret.code() != dti::ReturnCode::SUCCESS)\n\t'
+        cpp_body += '\tstd::cout << "Failed to set parameters: " << ret.error_message().value() << std::endl;\n'
+
+        cpp_body += '}\n'
+
+        return h_body, cpp_body
+
+    def generate_model_get_parameter(self) -> str:
+        h_body = ""
+        cpp_body = ""
+        if not self.config.has(KEY_OUTPUTS):
+            return h_body, cpp_body
+
+        h_body += f'\n@callback({KEY_GET_PARAM})\n'
+        h_body += f'void GetParameter(const ObjectInstanceHandle& handler);\n'
+
+        cpp_body += f'\n@callback({KEY_GET_PARAM})\n'
+        cpp_body += "void GetParameter(const ObjectInstanceHandle& handler)\n{\n"
+        cpp_body += "\tdti::MParameter paramMessage;\n"
+
+        if self.config.has(KEY_PARAMETERS):
+            for p in self.config[KEY_PARAMETERS]:
+                cpp_body += f'\tparamMessage.mutable_parameters()->mutable_identifiers()->mutable_names()->add_names("{p[KEY_NAME]}");\n'
+
+        cpp_body += '\tdti::MDTMessage message;\n'
+        cpp_body += '\t*message.mutable_parameter() = paramMessage;\n'
+        cpp_body += '\tdti::MReturnValue ret = SendMessage(message);\n'
+        cpp_body += '\tif (ret.code() != dti::ReturnCode::SUCCESS)\n\t{\n'
+        cpp_body += '\t\tstd::cout << "Failed to get parameters: " << ret.error_message().value() << std::endl;\n'
+        cpp_body += '\t\treturn;\n\t}\n\n'
+
+        cpp_body += "\tAttributeHandleValueMap attributes;;\n"
+        for index, o in enumerate(self.config[KEY_PARAMETERS]):
+            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers().names().names({index});\n'
+            if o["type"] == "float":
+                cpp_body += f'\tdti::MF32 value{o[KEY_NAME]};\n'
+            elif o["type"] == "double":
+                cpp_body += f'\tdti::MF64 value{o[KEY_NAME]};\n'
+            elif o["type"] == "int32":
+                cpp_body += f'\tdti::MI32 value{o[KEY_NAME]};\n'
+            elif o["type"] == "uint32":
+                cpp_body += f'\tdti::MU32 value{o[KEY_NAME]};\n'
+
+            cpp_body += f'\tif (ret.values().values({index}).UnpackTo(&value{o[KEY_NAME]}))\n'
+            cpp_body += "\t{\n"
+            cpp_body += f'\t\t{o["type"]} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
+            cpp_body += f'\t\tattributes[{PARAMETER_HANDLER}s.at(id{o[KEY_NAME]})] = toData<{o["type"]}>(&v{o[KEY_NAME]});\n'
+            cpp_body += "\t}\n\n"
+
+        cpp_body += f'\trtiamb->updateAttributeValues(handler, attributes, toVariableLengthData(mName.c_str()));\n'
+        cpp_body += "}\n"
+
+        return h_body, cpp_body
+
+    def generate_model_publications(self) -> str:
+        h_body = ""
+        cpp_body = f'\n@callback({KEY_PUBLISH})\n'
+
+        if self.config.has(KEY_PARAMETERS):
+            cpp_body += "\tAttributeHandleSet pubAttributes;\n"
+            cpp_body += f'\tfor (const auto& pair : {PARAMETER_HANDLER}s)\n'
+            cpp_body += "\t\tpubAttributes.insert(pair.second);\n\n"
+            cpp_body += f'\trtiamb->publishObjectClassAttributes({PARAMETER_HANDLER}, pubAttributes);\n'
+
+        if self.config.has(KEY_OUTPUTS):
+            cpp_body += f'\trtiamb->publishInteractionClass({OUTPUT_HANDLER});\n'
+
+        return h_body, cpp_body
+
     def generate_model_subscriptions(self) -> str:
         h_body = ""
         cpp_body = f'\n@callback({KEY_SUBSCRIBE})\n'
 
-        if self.config.has("parameters"):
-            cpp_body += f'\trtiamb->publishObjectClassAttributes({PARAMETER_HANDLER}, {PARAMETER_HANDLER}s);\n'
-            cpp_body += f'\trtiamb->subscribeObjectClassAttributes({PARAMETER_HANDLER}, {PARAMETER_HANDLER}s, true);\n'
+        if self.config.has(KEY_PARAMETERS):
+            cpp_body += "\tAttributeHandleSet subAttributes;\n"
+            cpp_body += f'\tfor (const auto& pair : {PARAMETER_HANDLER}s)\n'
+            cpp_body += "\t\tsubAttributes.insert(pair.second);\n\n"
+            cpp_body += f'\trtiamb->subscribeObjectClassAttributes({PARAMETER_HANDLER}, subAttributes, true);\n'
 
-        if self.config.has("inputs"):
+        if self.config.has(KEY_INPUTS):
             cpp_body += f'\trtiamb->subscribeInteractionClass({INPUT_HANDLER});\n'
-
-        if self.config.has("outputs"):
-            cpp_body += f'\trtiamb->publishInteractionClass({OUTPUT_HANDLER});\n'
 
         return h_body, cpp_body

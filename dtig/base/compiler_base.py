@@ -1,6 +1,8 @@
 import os
 from abc import abstractmethod
 
+from dtig.common.result import VoidResult
+
 ENV_DIR = os.environ['VIRTUAL_ENV'] + "/"
 INCLUDE_DIR = ENV_DIR + "include"
 LIB_DIR = ENV_DIR + "lib"
@@ -19,8 +21,13 @@ class CompilerBase():
         self.compiler_opts = []
         self.subfolders = []
 
-    def compile(self):
+    @abstractmethod
+    def compile(self, options = []) -> VoidResult:
         raise Exception("compile must be implemented")
+
+    @abstractmethod
+    def generate(self) -> VoidResult:
+        raise Exception("generate must be implemented")
 
     def set_project(self, project : str):
         self.project = project
