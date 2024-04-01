@@ -154,6 +154,10 @@ cython_debug/
 
 # Compiled files
 **/build/**
+**/generated/**
+**/CppHelpers/**
+**/OpenRTI/**
+**/install/**
 **/protobuf/**
 !protobuf
 
