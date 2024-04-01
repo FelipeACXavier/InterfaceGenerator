@@ -1,7 +1,14 @@
 @imports
-#include "@ambassador_header"
+#include "@>ambassador_header"
 #include <RTI/RTIambassador.h>
 #include <memory>
+
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <google/protobuf/message.h>
+#include "protobuf/return_value.pb.h"
 
 #define READY_TO_RUN "ReadyToRun"
 
@@ -15,23 +22,19 @@ HLAFederate();
 virtual ~HLAFederate();
 
 @run
-void runFederate(const std::string& federateName, const std::string& fom, const std::string& address);
+void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port);
 
 @member(public)
-std::shared_ptr<@ambassador> fedamb;
-std::shared_ptr<rti1516::RTIambassador> rtiamb;
+std::shared_ptr<@>ambassador> fedamb;
+std::auto_ptr<rti1516::RTIambassador> rtiamb;
 
 @member(private)
+uint16_t mPort;
 std::string mName;
 
-rti1516::AttributeHandle aaHandle;
-rti1516::AttributeHandle abHandle;
-rti1516::AttributeHandle acHandle;
-rti1516::ObjectClassHandle aHandle;
+int mClient = -1;
 
-rti1516::ParameterHandle xaHandle;
-rti1516::ParameterHandle xbHandle;
-rti1516::InteractionClassHandle xHandle;
+@>callback(member)
 
 @method(private)
 std::wstring convertStringToWstring(const std::string& str);
@@ -46,6 +49,33 @@ void sendInteraction();
 void advanceTime(double timestep);
 void deleteObject(rti1516::ObjectInstanceHandle objectHandle);
 
+double getLbts();
+
 rti1516::ObjectInstanceHandle registerObject();
 
-double getLbts();
+dti::MReturnValue SendMessage(const google::protobuf::Message& message);
+
+template<typename T>
+rti1516::VariableLengthData toData(T* s)
+{
+  rti1516::VariableLengthData variableLengthData;
+  if (s)
+    variableLengthData.setData(s, sizeof(T));
+
+  return variableLengthData;
+}
+
+rti1516::VariableLengthData toData(char* s)
+{
+  rti1516::VariableLengthData variableLengthData;
+  if (s)
+    variableLengthData.setData(s, strlen(s));
+
+  return variableLengthData;
+}
+
+template<typename T>
+T fromData(rti1516::VariableLengthData data)
+{
+  return *(T*)data.data();
+}

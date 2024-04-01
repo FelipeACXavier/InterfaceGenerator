@@ -49,7 +49,7 @@ def parse_output(incoming_references) -> Message:
     n_outputs = len(incoming_references)
     references = [self.value_references[ref] for ref in incoming_references]
 
-    print(f'Getting values: {references}')
+    print(f'Getting values: {references} from {incoming_references}')
     values = self.fmu.getReal(references)
     print(f'Values: {values}')
 
@@ -170,7 +170,6 @@ def run_model() -> None:
         with self.condition:
             if self.state == State.STEPPING:
                 self.condition.wait_for(lambda: self.step)
-                self.step = False
                 print(f'Step: {time:0.4f} out of {self.stop_time:0.4f}')
 
         # perform one step
@@ -182,8 +181,15 @@ def run_model() -> None:
         outputs = self.fmu.getReal(self.value_references.values())[1:]
         rows.append((time, *outputs))
 
-    self.fmu.terminate()
-    self.fmu.freeInstance()
+        with self.condition:
+            self.step = False
+            self.condition.notify_all()
+
+    print(f'FMU simulation done')
+
+    with self.condition:
+        if self.state != State.STOPPED:
+            self.state = State.IDLE
 
     if len(rows) > 0:
         # convert the results to a structured NumPy array
@@ -191,11 +197,10 @@ def run_model() -> None:
         plot_result(result)
 
     with self.condition:
-        if self.state != State.STOPPED:
-            self.state = State.IDLE
-
-        print(f'FMU simulation done')
         self.condition.wait_for(lambda: self.state == State.STOPPED)
+
+    self.fmu.terminate()
+    self.fmu.freeInstance()
 
     # clean up
     shutil.rmtree(unzipdir, ignore_errors=True)

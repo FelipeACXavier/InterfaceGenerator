@@ -7,11 +7,14 @@ using namespace rti1516;
 @classname
 HLAAmbassador
 
+@inherit
+NullFederateAmbassador
+
 @constructor
-@classname();
+HLAAmbassador();
 
 @destructor
-virtual ~@classname() throw();
+virtual ~HLAAmbassador() throw();
 
 @method(public)
 virtual void synchronizationPointRegistrationSucceeded(std::wstring const& label) throw(FederateInternalError);

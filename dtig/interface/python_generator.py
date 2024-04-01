@@ -16,8 +16,8 @@ engine_folder = os.path.dirname(__file__)
 
 
 class ServerGenerator(GeneratorBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, output_file):
+        super().__init__(output_file)
 
         # Set the function definition
         self.function_definition = lambda name, args: f'def {name}({args}):'
@@ -114,7 +114,7 @@ class ServerGenerator(GeneratorBase):
         # print(json.dumps(self.callbacks, indent=2))
         return VoidResult()
 
-    def generate(self, output_file: str, config: ModelConfigurationBase) -> VoidResult:
+    def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
         if not reading_templates.is_success():
             return reading_templates
@@ -171,10 +171,10 @@ class ServerGenerator(GeneratorBase):
 
         file_contents = self.replace_calls(file_contents)
 
-        with open(output_file, "w") as file:
+        with open(self.output_file, "w") as file:
             file.write(file_contents)
 
-        return python.format(output_file)
+        return python.format(self.output_file)
 
     def generate_imports(self) -> Result:
         return Result(self.callbacks[KEY_IMPORTS][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY])
@@ -250,9 +250,9 @@ class ServerGenerator(GeneratorBase):
 # Base class used to create common interface clients in python
 # =======================================================================
 class ClientGenerator(GeneratorBase):
-    def __init__(self):
-       super().__init__()
+    def __init__(self, output_file):
+       super().__init__(output_file)
 
-    def generate(self, output_file: str, config: ModelConfigurationBase) -> VoidResult:
+    def generate(self, config: ModelConfigurationBase) -> VoidResult:
         return VoidResult.failed("Not implemented")
 

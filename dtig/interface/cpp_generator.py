@@ -12,11 +12,11 @@ from dtig.common.model_configuration_base import ModelConfigurationBase
 
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
-cpp_function_regex=fr'^([A-Za-z_:1-9\s]*?)([@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
+cpp_function_regex=fr'^([A-Za-z_:1-9\s<>]*?)([@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
 
 class HppGenerator(GeneratorBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, output_file):
+        super().__init__(output_file)
 
         # Set the function definition
         self.function_definition = lambda name, args: f'{name}({args})'
@@ -47,6 +47,11 @@ class HppGenerator(GeneratorBase):
             data, KEY_MAIN, has_argument=False, maximum=1)
         if not result.is_success():
             return VoidResult.failed(f'Failed to read main: {result}')
+
+        result = self.parse_template(
+            data, KEY_INHERIT, has_argument=False, maximum=None)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read inherit: {result}')
 
         result = self.parse_template(
             data, KEY_CONSTRUCTOR, has_argument=False, maximum=1)
@@ -103,21 +108,25 @@ class HppGenerator(GeneratorBase):
         # Then parse the engine template
         if self.engine_template_file:
             data = cpp.read_file(self.engine_template_file)
-            data = self.engine_template_file
 
             result = self.parse_template(
                 data, KEY_CALLBACK, has_argument=True, maximum=10)
             if not result.is_success():
-                return VoidResult.failed(f'Failed to read callback file: {result}')
+                return VoidResult.failed(f'Failed to read engine callback: {result}')
+
+            result = self.parse_template(
+                data, KEY_MEMBER, has_argument=False, maximum=None)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read engine member: {result}')
 
             result = self.parse_template(
                 data, KEY_METHOD, has_argument=False, maximum=None)
             if not result.is_success():
-                return VoidResult.failed(f'Failed to read method: {result}')
+                return VoidResult.failed(f'Failed to read engine method: {result}')
 
         return VoidResult()
 
-    def generate(self, output_file: str, config: ModelConfigurationBase) -> VoidResult:
+    def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
         if not reading_templates.is_success():
             return reading_templates
@@ -159,8 +168,8 @@ class HppGenerator(GeneratorBase):
 
         file_contents = self.replace_calls(file_contents)
 
-        with open(output_file, "w") as file:
-            file.write(file_contents)
+        with open(self.output_file, "w") as file:
+            file.write(cpp.set_indentation(file_contents))
 
         return VoidResult()
 
@@ -174,7 +183,13 @@ class HppGenerator(GeneratorBase):
 
     def generate_class(self) -> Result:
         if self.callbacks[KEY_CLASS_NAME][KEY_NAME]:
-            return Result("\nclass " + self.callbacks[KEY_CLASS_NAME][KEY_NAME] + "\n{")
+            inheritance = self.generate_inherit()
+            if not inheritance:
+                return inheritance
+
+            inherit_string = "" if len(inheritance.value()) < 1 else f':{inheritance.value()}'
+            return Result(f'\nclass {self.callbacks[KEY_CLASS_NAME][KEY_NAME]}{inherit_string}\n{{')
+
         return Result("")
 
     def generate_constructor(self) -> Result:
@@ -197,13 +212,16 @@ class HppGenerator(GeneratorBase):
             or len(self.callbacks[KEY_CONSTRUCTOR][KEY_BODY]) > 0 \
             or len(self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]) > 0 \
             or len(self.callbacks[KEY_DESTRUCTOR][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]) > 0:
+            or len(self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]) > 0 \
+            or len(self.callbacks[KEY_CALLBACK][KEY_MEMBER][KEY_BODY]) > 0:
             body += "\npublic:"
 
         body += self.callbacks[KEY_CONSTRUCTOR][KEY_BODY]
         body += self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]
         body += self.callbacks[KEY_DESTRUCTOR][KEY_BODY]
         body += self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]
+
+        body += self.callbacks[KEY_CALLBACK][KEY_MEMBER][KEY_BODY]
 
         for member in self.callbacks[KEY_MEMBER][KEY_BODY]:
             body += member
@@ -231,10 +249,24 @@ class HppGenerator(GeneratorBase):
         for method in self.callbacks[KEY_METHOD][KEY_PRIVATE][KEY_BODY]:
             body += method
 
-        return Result(cpp.set_indentation(body))
+        return Result(body)
 
     def generate_main(self) -> Result:
         return Result(self.callbacks[KEY_MAIN][KEY_BODY])
+
+    def generate_inherit(self) -> Result:
+        body = ""
+
+        for name in self.callbacks[KEY_INHERIT][KEY_BODY]:
+            body += f' public {name},'
+
+        for name in self.callbacks[KEY_INHERIT][KEY_PUBLIC][KEY_BODY]:
+            body += f' public {name},'
+
+        for name in self.callbacks[KEY_INHERIT][KEY_PRIVATE][KEY_BODY]:
+            body += f' private {name},'
+
+        return Result(body.rstrip(","))
 
     def generate_message_parsers(self) -> str:
         body = str()
@@ -250,7 +282,10 @@ class HppGenerator(GeneratorBase):
 
         if callback:
             if self.is_valid_key(callback):
-                return f'{self.callbacks[name][callback][KEY_NAME]}'
+                if self.callbacks[name][callback][KEY_NAME]:
+                    return f'{self.callbacks[name][callback][KEY_NAME]}'
+                else:
+                    return f'{self.callbacks[name][callback][KEY_BODY]}'
             else:
                 return  f'{self.callbacks[name][KEY_NAME]}{args}'
         else:
@@ -260,17 +295,6 @@ class HppGenerator(GeneratorBase):
                 return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
 
     def function_from_key(self, groups, default_name):
-        # if len(groups[2]) == 0 and len(groups[1]) > 0:
-        #     function_id = f'{groups[1].strip() if default_name is None else default_name}'
-        # elif len(groups[1]) == 0 and len(groups[2]) > 0:
-        #     function_id = f'{groups[2].strip() if default_name is None else default_name}'
-        # else:
-        #     name = groups[2].strip() if default_name is None else default_name
-        #     function_id = f'{groups[1]} {name}'
-
-        # function_args = groups[3].strip()
-        # return function_id, function_args
-        LOG_INFO(f'{groups.groups()}')
         ctype = groups.groups()[0].strip()
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
@@ -278,12 +302,11 @@ class HppGenerator(GeneratorBase):
         function_id = f'{ctype} {name}'
 
         function_args = args
-        LOG_INFO(f'HEADER: {function_id}({function_args})')
         return function_id, function_args
 
 class CppGenerator(GeneratorBase):
-    def __init__(self, header_name = None):
-        super().__init__()
+    def __init__(self, output_file, header_name = None):
+        super().__init__(output_file)
 
         self.header_name = header_name
         if self.header_name and ".h" not in self.header_name and ".hpp" not in self.header_name:
@@ -364,7 +387,6 @@ class CppGenerator(GeneratorBase):
         # Then parse the engine template
         if self.engine_template_file:
             data = cpp.read_file(self.engine_template_file)
-            data = self.engine_template_file
 
             result = self.parse_template(
                 data, KEY_CALLBACK, has_argument=True, maximum=10)
@@ -376,10 +398,10 @@ class CppGenerator(GeneratorBase):
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read method: {result}')
 
-        # print(json.dumps(self.callbacks, indent=2))
+        print(json.dumps(self.callbacks, indent=2))
         return VoidResult()
 
-    def generate(self, output_file: str, config: ModelConfigurationBase) -> VoidResult:
+    def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
         if not reading_templates.is_success():
             return reading_templates
@@ -387,7 +409,7 @@ class CppGenerator(GeneratorBase):
         file_contents = str()
 
         # Generate imports
-        creation = self.generate_imports(output_file)
+        creation = self.generate_imports()
         if not creation.is_success():
             return creation
         file_contents += creation.value()
@@ -422,16 +444,15 @@ class CppGenerator(GeneratorBase):
             return creation
         file_contents += creation.value()
 
-        file_contents = self.replace_calls(file_contents)
+        with open(self.output_file, "w") as file:
+            file.write(self.replace_calls(file_contents))
 
-        with open(output_file, "w") as file:
-            file.write(file_contents)
-
+        # Create main file if @main is defined
         if len(self.callbacks[KEY_MAIN][KEY_BODY]) > 0:
-            main_file = os.path.dirname(output_file) + "/main.cpp"
+            main_file = os.path.dirname(self.output_file) + "/main.cpp"
             LOG_DEBUG(f'Writing main file to {main_file}')
             with open(main_file, "w") as file:
-                creation = self.generate_main(output_file)
+                creation = self.generate_main()
                 if not creation.is_success():
                     return creation
 
@@ -439,7 +460,7 @@ class CppGenerator(GeneratorBase):
 
         return VoidResult()
 
-    def generate_imports(self, output_file) -> Result:
+    def generate_imports(self) -> Result:
         body = ""
         if self.header_name:
             body = f'#include "{self.header_name}"\n'
@@ -472,7 +493,7 @@ class CppGenerator(GeneratorBase):
 
         return Result(body)
 
-    def generate_main(self, output_file) -> Result:
+    def generate_main(self) -> Result:
         body = ""
         if self.header_name:
             body = f'#include "{self.header_name}"\n'
@@ -483,7 +504,8 @@ class CppGenerator(GeneratorBase):
     def generate_message_parsers(self) -> str:
         body = str()
         for key, method in self.callbacks[KEY_PARSE].items():
-            body += method[KEY_BODY] + self.callbacks[KEY_CALLBACK][key][KEY_BODY]
+            body += method[KEY_BODY] + \
+                self.callbacks[KEY_CALLBACK][key][KEY_BODY] if self.callbacks[KEY_CALLBACK][key][KEY_SELF] else ""
 
         return body
 
@@ -492,9 +514,13 @@ class CppGenerator(GeneratorBase):
         args = groups[1]
         callback = groups[2]
 
+        LOG_INFO(f'Groups: {groups}')
         if callback:
             if self.is_valid_key(callback):
-                return f'{self.callbacks[name][callback][KEY_NAME]}'
+                if self.callbacks[name][callback][KEY_NAME]:
+                    return f'{self.callbacks[name][callback][KEY_NAME]}'
+                else:
+                    return f'{self.callbacks[name][callback][KEY_BODY]}'
             else:
                 return  f'{self.callbacks[name][KEY_NAME]}{args}'
         else:
@@ -504,21 +530,12 @@ class CppGenerator(GeneratorBase):
                 return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
 
     def function_from_key(self, groups, default_name):
-        LOG_INFO(f'{groups.groups()}')
         ctype = groups.groups()[0].strip()
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
 
-        # if len(groups[2]) == 0 and len(groups[1]) > 0:
-        #     function_id = f'@classname::{groups[1].strip() if default_name is None else default_name}'
-        # elif len(groups[1]) == 0 and len(groups[2]) > 0:
-        #     function_id = f'@classname::{groups[2].strip() if default_name is None else default_name}'
-        # else:
-        #     name = groups[2].strip() if default_name is None else default_name
-        # function_id = f'{groups[1]} @classname::{name}'
-        function_id = f'{ctype} @classname::{name}'
+        function_id = f'{ctype} @>classname::{name}'
 
         function_args = args
-        LOG_INFO(f'SOURCE: {function_id}({function_args})')
         return function_id, function_args
 

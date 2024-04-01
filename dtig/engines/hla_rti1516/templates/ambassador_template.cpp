@@ -2,8 +2,6 @@
 #include <RTI/RTI1516fedTime.h>
 #include <string.h>
 
-#include <locale>
-#include <codecvt>
 #include <iostream>
 #include "logging.h"
 
@@ -110,71 +108,47 @@ void discoverObjectInstance(ObjectInstanceHandle theObject,
 
 @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
-                                           AttributeHandleValueMap const& theAttributeValues,
-                                           VariableLengthData const& theUserSuppliedTag,
-                                           OrderType sentOrder,
-                                           TransportationType theType) throw(ObjectInstanceNotKnown,
-                                                                             AttributeNotRecognized,
-                                                                             AttributeNotSubscribed,
-                                                                             FederateInternalError)
+                            AttributeHandleValueMap const& theAttributeValues,
+                            VariableLengthData const& theUserSuppliedTag,
+                            OrderType sentOrder,
+                            TransportationType theType) throw(ObjectInstanceNotKnown,
+                                                              AttributeNotRecognized,
+                                                              AttributeNotSubscribed,
+                                                              FederateInternalError)
 {
-  LOG_INFO("Reflection Received: 1 %ls", theObject.toString().c_str());
-
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-  for (auto i = theAttributeValues.begin(); i != theAttributeValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("attrHandle=%s, attrValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (attributeReceived)
+    attributeReceived(theObject, theAttributeValues);
 }
 
 @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
-                                           AttributeHandleValueMap const& theAttributeValues,
-                                           VariableLengthData const& theUserSuppliedTag,
-                                           OrderType sentOrder,
-                                           TransportationType theType,
-                                           RegionHandleSet const& theSentRegionHandleSet) throw(ObjectInstanceNotKnown,
-                                                                                                AttributeNotRecognized,
-                                                                                                AttributeNotSubscribed,
-                                                                                                FederateInternalError)
+                            AttributeHandleValueMap const& theAttributeValues,
+                            VariableLengthData const& theUserSuppliedTag,
+                            OrderType sentOrder,
+                            TransportationType theType,
+                            RegionHandleSet const& theSentRegionHandleSet) throw(ObjectInstanceNotKnown,
+                                                                                AttributeNotRecognized,
+                                                                                AttributeNotSubscribed,
+                                                                                FederateInternalError)
 {
-  LOG_INFO("Reflection Received: 2 %ls", theObject.toString().c_str());
-
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-  for (auto i = theAttributeValues.begin(); i != theAttributeValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("attrHandle=%s, attrValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (attributeReceived)
+    attributeReceived(theObject, theAttributeValues);
 }
 
 @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
-                                      AttributeHandleValueMap const& theAttributeValues,
-                                      VariableLengthData const& theUserSuppliedTag,
-                                      OrderType sentOrder,
-                                      TransportationType theType,
-                                      LogicalTime const& theTime,
-                                      OrderType receivedOrder) throw(ObjectInstanceNotKnown,
-                                                                     AttributeNotRecognized,
-                                                                     AttributeNotSubscribed,
-                                                                     FederateInternalError)
+                            AttributeHandleValueMap const& theAttributeValues,
+                            VariableLengthData const& theUserSuppliedTag,
+                            OrderType sentOrder,
+                            TransportationType theType,
+                            LogicalTime const& theTime,
+                            OrderType receivedOrder) throw(ObjectInstanceNotKnown,
+                                                            AttributeNotRecognized,
+                                                            AttributeNotSubscribed,
+                                                            FederateInternalError)
 {
-  LOG_INFO("Reflection Received: 3 %ls", theObject.toString().c_str());
-
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-  for (auto i = theAttributeValues.begin(); i != theAttributeValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("attrHandle=%s, attrValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (attributeReceived)
+    attributeReceived(theObject, theAttributeValues);
 }
 
 @method
@@ -188,198 +162,130 @@ std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& vari
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType) throw(InteractionClassNotRecognized, InteractionParameterNotRecognized, InteractionClassNotSubscribed, FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType) throw(InteractionClassNotRecognized,
+                                                          InteractionParameterNotRecognized,
+                                                          InteractionClassNotSubscribed,
+                                                          FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 1 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType,
-                                       RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
-                                                                                            InteractionParameterNotRecognized,
-                                                                                            InteractionClassNotSubscribed,
-                                                                                            FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType,
+                        RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
+                                                                            InteractionParameterNotRecognized,
+                                                                            InteractionClassNotSubscribed,
+                                                                            FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 2 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType,
-                                       LogicalTime const& theTime,
-                                       OrderType receivedOrder) throw(InteractionClassNotRecognized,
-                                                                      InteractionParameterNotRecognized,
-                                                                      InteractionClassNotSubscribed,
-                                                                      FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType,
+                        LogicalTime const& theTime,
+                        OrderType receivedOrder) throw(InteractionClassNotRecognized,
+                                                      InteractionParameterNotRecognized,
+                                                      InteractionClassNotSubscribed,
+                                                      FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 3 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType,
-                                       LogicalTime const& theTime,
-                                       OrderType receivedOrder,
-                                       RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
-                                                                                            InteractionParameterNotRecognized,
-                                                                                            InteractionClassNotSubscribed,
-                                                                                            FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType,
+                        LogicalTime const& theTime,
+                        OrderType receivedOrder,
+                        RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
+                                                                            InteractionParameterNotRecognized,
+                                                                            InteractionClassNotSubscribed,
+                                                                            FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 4 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType,
-                                       LogicalTime const& theTime,
-                                       OrderType receivedOrder,
-                                       MessageRetractionHandle theHandle) throw(InteractionClassNotRecognized,
-                                                                                InteractionParameterNotRecognized,
-                                                                                InteractionClassNotSubscribed,
-                                                                                InvalidLogicalTime,
-                                                                                FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType,
+                        LogicalTime const& theTime,
+                        OrderType receivedOrder,
+                        MessageRetractionHandle theHandle) throw(InteractionClassNotRecognized,
+                                                                InteractionParameterNotRecognized,
+                                                                InteractionClassNotSubscribed,
+                                                                InvalidLogicalTime,
+                                                                FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 5 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void receiveInteraction(InteractionClassHandle theInteraction,
-                                       ParameterHandleValueMap const& theParameterValues,
-                                       VariableLengthData const& theUserSuppliedTag,
-                                       OrderType sentOrder,
-                                       TransportationType theType,
-                                       LogicalTime const& theTime,
-                                       OrderType receivedOrder,
-                                       MessageRetractionHandle theHandle,
-                                       RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
-                                                                                            InteractionParameterNotRecognized,
-                                                                                            InteractionClassNotSubscribed,
-                                                                                            InvalidLogicalTime,
-                                                                                            FederateInternalError)
+                        ParameterHandleValueMap const& theParameterValues,
+                        VariableLengthData const& theUserSuppliedTag,
+                        OrderType sentOrder,
+                        TransportationType theType,
+                        LogicalTime const& theTime,
+                        OrderType receivedOrder,
+                        MessageRetractionHandle theHandle,
+                        RegionHandleSet const& theSentRegionHandleSet) throw(InteractionClassNotRecognized,
+                                                                            InteractionParameterNotRecognized,
+                                                                            InteractionClassNotSubscribed,
+                                                                            InvalidLogicalTime,
+                                                                            FederateInternalError)
 {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-
-  auto interaction = converter.to_bytes(theInteraction.toString());
-  std::string tag = std::string((char*)theUserSuppliedTag.data(), theUserSuppliedTag.size());
-
-  LOG_INFO("Interaction 6 handle=%s, tag=%s, parameterCount=%u", interaction.c_str(), tag.c_str(), theParameterValues.size());
-
-  for (auto i = theParameterValues.begin(); i != theParameterValues.end(); i++)
-  {
-    std::string param = converter.to_bytes(i->first.toString());
-    std::string value = std::string((char*)i->second.data(), i->second.size());
-    LOG_INFO("paramHandle=%s, paramValue=%s", param.c_str(), value.c_str());
-  }
-  LOG_INFO("");
+  if (interactionReceived)
+    interactionReceived(theInteraction, theParameterValues);
 }
 
 @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
-                                         VariableLengthData const& theUserSuppliedTag,
-                                         OrderType sentOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
+                          VariableLengthData const& theUserSuppliedTag,
+                          OrderType sentOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
   LOG_INFO("Object Removed 1: handle= %ls", theObject.toString().c_str());
 }
 
 @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
-                                         VariableLengthData const& theUserSuppliedTag,
-                                         OrderType sentOrder,
-                                         LogicalTime const& theTime,
-                                         OrderType receivedOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
+                          VariableLengthData const& theUserSuppliedTag,
+                          OrderType sentOrder,
+                          LogicalTime const& theTime,
+                          OrderType receivedOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
   LOG_INFO("Object Removed 2: handle= %ls", theObject.toString().c_str());
 }
 
 @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
-                                         VariableLengthData const& theUserSuppliedTag,
-                                         OrderType sentOrder,
-                                         LogicalTime const& theTime,
-                                         OrderType receivedOrder,
-                                         MessageRetractionHandle theHandle) throw(ObjectInstanceNotKnown,
-                                                                                  InvalidLogicalTime, FederateInternalError)
+                          VariableLengthData const& theUserSuppliedTag,
+                          OrderType sentOrder,
+                          LogicalTime const& theTime,
+                          OrderType receivedOrder,
+                          MessageRetractionHandle theHandle) throw(ObjectInstanceNotKnown,
+                                                                  InvalidLogicalTime,
+                                                                  FederateInternalError)
 {
   LOG_INFO("Object Removed 3: handle= %ls", theObject.toString().c_str());
 }

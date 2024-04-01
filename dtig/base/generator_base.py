@@ -1,6 +1,7 @@
 import re
 import json
 
+from pathlib import Path
 from abc import abstractmethod
 
 from dtig.common.keys import *
@@ -17,8 +18,10 @@ class TemplateItem:
 
 class GeneratorBase():
     # Must be called from any children so members are initialized
-    def __init__(self):
+    def __init__(self, output_file):
         self.config = None
+
+        self.output_file = output_file
 
         self.engine_template_file = None
         self.common_template_file = None
@@ -30,6 +33,13 @@ class GeneratorBase():
             KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
             KEY_STATES          : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
             KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_INHERIT         : {
+                KEY_NAME : None,
+                KEY_BODY : [],
+                KEY_SELF : False,
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False}
+            },
             KEY_CONSTRUCTOR     : {
                 KEY_NAME : None,
                 KEY_BODY : "",
@@ -82,7 +92,10 @@ class GeneratorBase():
                 KEY_GET_OUTPUT  : {KEY_NAME : "get_output_callback",  KEY_BODY : "", KEY_SELF: True},
                 KEY_ADVANCE     : {KEY_NAME : "advance_callback",     KEY_BODY : "", KEY_SELF: True},
                 KEY_INITIALIZE  : {KEY_NAME : "initialize_callback",  KEY_BODY : "", KEY_SELF: True},
-                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback",  KEY_BODY : "", KEY_SELF : True},
+                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback",  KEY_BODY : "", KEY_SELF: True},
+                KEY_MEMBER      : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
+                KEY_PUBLISH     : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
+                KEY_SUBSCRIBE   : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
             },
             KEY_NEW             : {},
             }
@@ -90,7 +103,10 @@ class GeneratorBase():
     def new_callback(self, key, data):
         self.callbacks[KEY_NEW][key] = data
 
-    def generate(self, output_file : str, config : ModelConfigurationBase) -> VoidResult:
+    def get_output_file(self):
+        return self.output_file
+
+    def generate(self, config : ModelConfigurationBase) -> VoidResult:
         raise Exception("Not implemented")
 
     def read_templates(self) -> VoidResult:
@@ -121,7 +137,7 @@ class GeneratorBase():
 
             # Search for the next decorator
             # @ in the middle of a function are replaced later
-            end = re.search(fr'^@(?!classname[^\s])', updated_data, flags=re.MULTILINE)
+            end = re.search(fr'^@(?!>[^\s])', updated_data, flags=re.MULTILINE)
             offset = (len(data) - len(updated_data))
             function_end = len(data) - 1 if end is None else end.end() - 1 + offset
 
@@ -143,7 +159,7 @@ class GeneratorBase():
 
                 function_id, function_args = self.function_from_key(definition, callback_name)
 
-                LOG_DEBUG(f'Function {function_id} with args {function_args}')
+                LOG_TRACE(f'Function {function_id} with args {function_args}')
                 # Set default callback name
                 default = self.function_definition(function_id, function_args)
                 body = body[:definition.start()] + default + body[definition.end():]
@@ -151,20 +167,27 @@ class GeneratorBase():
             if not decorator_arg:
                 if name == KEY_METHOD:
                     self.callbacks[name][KEY_BODY].append("\n" + body + "\n")
+                elif name == KEY_INHERIT:
+                    self.callbacks[name][KEY_BODY].append(body)
                 elif name == KEY_CLASS_NAME:
                     self.callbacks[name][KEY_NAME] = body
                     break
                 else:
                     self.callbacks[name][KEY_BODY] = "\n" + body + "\n"
             else:
-                self.callbacks[name][decorator_arg][KEY_BODY] = "\n" + body + "\n"
+                if name == KEY_INHERIT:
+                    self.callbacks[name][decorator_arg][KEY_BODY].append(body)
+                elif decorator_arg == KEY_MEMBER:
+                    self.callbacks[name][decorator_arg][KEY_NAME] += body
+                else:
+                    self.callbacks[name][decorator_arg][KEY_BODY] = "\n" + body + "\n"
 
         return VoidResult()
 
     def replace_calls(self, contents: str):
         iter_body = contents
-        # Look for anything like @<name>(<args>) or @<name>
-        regex = fr'@([a-z_]*\b)(\(([a-z_]*)\))?'
+        # Look for anything like @><name>(<args>) or @<name>
+        regex = fr'@>([a-z_]*\b)(\(([a-z_]*)\))?'
         while True:
             match = re.search(regex, iter_body)
             if not match:
