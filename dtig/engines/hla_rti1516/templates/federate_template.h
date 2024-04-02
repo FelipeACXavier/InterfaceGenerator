@@ -15,17 +15,17 @@
 // @classname
 HLAFederate
 
-// @constructor
+// @constructor(public)
 HLAFederate();
 
-// @destructor
+// @destructor(public)
 virtual ~HLAFederate();
 
 // @run
 void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port);
 
 // @member(public)
-std::shared_ptr<// @>ambassador> fedamb;
+std::shared_ptr<//@>ambassador> fedamb;
 std::auto_ptr<rti1516::RTIambassador> rtiamb;
 
 // @member(private)
@@ -41,7 +41,14 @@ char mBuffer[1024] = {0};
 std::wstring convertStringToWstring(const std::string& str);
 rti1516::VariableLengthData toVariableLengthData(const char* s);
 
-void initializeHandles();
+// @>callback(publish)
+// @>callback(subscribe)
+// @>callback(initialize)
+// @>callback(setparameter)
+// @>callback(getparameter)
+// @>callback(setinput)
+// @>callback(getoutput)
+
 void waitForUser();
 void enableTimePolicy();
 void publishAndSubscribe();
@@ -49,8 +56,6 @@ void updateAttributeValues(rti1516::ObjectInstanceHandle objectHandle);
 void sendInteraction();
 void advanceTime(double timestep);
 void deleteObject(rti1516::ObjectInstanceHandle objectHandle);
-
-double getLbts();
 
 rti1516::ObjectInstanceHandle registerObject();
 

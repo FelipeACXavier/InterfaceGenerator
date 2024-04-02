@@ -1,2 +1,3 @@
 ENGINE_FMI2 = "fmi2"
 ENGINE_HLA_RTI1516 = "hla_rti1516"
+ENGINE_SIMULINK_2023b = "simulink2023b"

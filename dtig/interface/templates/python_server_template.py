@@ -30,7 +30,7 @@ from google.protobuf.message import DecodeError
 # @classname
 FMI2Wrapper
 
-# @constructor
+# @constructor(public)
 def __init__(self):
     self.state: State = State.UNINITIALIZED
     self.server: socket.socket = None
@@ -41,7 +41,7 @@ def __init__(self):
     self.server_thread = threading.Thread(target=self.run_server)
     self.model_thread = threading.Thread(target=self.run_model)
 
-# @destructor
+# @destructor(public)
 def __del__(self):
     if self.server is not None:
         self.server.close()
@@ -205,14 +205,14 @@ def parse_message(self, data : str) -> Message:
 
     return dti_return.MReturnValue(code=dti_code.UNKNOWN_COMMAND)
 
-# @method
+# @method(public)
 def return_code(self, code: dti_code, message: str = None) -> dti_return:
     if message is None:
         return dti_return.MReturnValue(code=code)
 
     return dti_return.MReturnValue(code=code, error_message=dti_utils.MString(value=message))
 
-# @method
+# @method(public)
 def create_connection(self) -> bool:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -266,14 +266,14 @@ def run_server(self) -> None:
             self.state = State.STOPPED
             self.condition.notify_all()
 
-# @method
+# @method(public)
 def parse_and_assign_optional(self, message, name):
     if message.HasField(name):
         return self.parse_number(getattr(message, name))
 
     return None
 
-# @method
+# @method(public)
 def parse_number(self, message):
     fields = message.ListFields()
     if len(fields) != 1:

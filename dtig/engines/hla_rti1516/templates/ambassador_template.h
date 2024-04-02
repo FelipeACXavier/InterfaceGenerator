@@ -7,13 +7,13 @@ using namespace rti1516;
 // @classname
 HLAAmbassador
 
-// @inherit
+// @inherit(public)
 NullFederateAmbassador
 
-// @constructor
+// @constructor(public)
 HLAAmbassador();
 
-// @destructor
+// @destructor(public)
 virtual ~HLAAmbassador() throw();
 
 // @method(public)

@@ -16,18 +16,22 @@ def read_file(file : str) -> str:
             data += line.replace("\t", DEFAULT_INDENTATION)
     return data
 
-def set_indentation(data : str, level : int = 1) -> str:
-  indentation = str()
-  for i in range(level):
-    indentation += DEFAULT_INDENTATION
+def set_indentation(data : str) -> str:
+  new_data = ""
+  indentation = ""
 
-  new_data = str()
   data_with_breaks = data.splitlines(keepends=True)
   for line in data_with_breaks:
+    if "}" in line and not "{" in line:
+        indentation = indentation[:-2]
+
     if "public:" in line or "private:" in line:
         new_data += line
     else:
         new_data += indentation + line
+
+    if "{" in line and not "}" in line:
+        indentation += DEFAULT_INDENTATION
 
 
   return new_data

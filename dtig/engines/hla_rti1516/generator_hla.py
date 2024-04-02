@@ -51,7 +51,6 @@ class ClientGeneratorRTI1516():
         federate_cpp = CppGenerator(federate_source, Path(federate_header).name)
         federate_cpp.engine_template_file = self.federate_cpp_callbacks
         federate_cpp.common_template_file = engine_folder + "/federate_template.cpp"
-        federate_cpp.callbacks[KEY_CALLBACK][KEY_INITIALIZE] = {KEY_NAME : "",  KEY_BODY : "", KEY_SELF: False}
 
         federate_cpp.new_callback("server_cmd", self.server_cmd)
         federate_cpp.new_callback("server_path", self.server_path)
@@ -78,9 +77,9 @@ class ClientGeneratorRTI1516():
         # Make the ambassador configuration available to the federate
         ambassador_name = ambassador_hpp.callbacks[KEY_CLASS_NAME]
         federate_hpp.new_callback("ambassador", ambassador_name)
-        federate_hpp.new_callback("ambassador_header", {KEY_NAME: Path(ambassador_header).name, KEY_BODY: "", KEY_SELF: False})
+        federate_hpp.new_callback("ambassador_header", {KEY_NAME: None, KEY_BODY: Path(ambassador_header).name, KEY_SELF: False})
         federate_cpp.new_callback("ambassador", ambassador_name)
-        federate_cpp.new_callback("ambassador_header", {KEY_NAME: Path(ambassador_header).name, KEY_BODY: "", KEY_SELF: False})
+        federate_cpp.new_callback("ambassador_header", {KEY_NAME: None, KEY_BODY: Path(ambassador_header).name, KEY_SELF: False})
 
         generated = federate_hpp.generate(config)
         if not generated:
@@ -93,8 +92,8 @@ class ClientGeneratorRTI1516():
         return VoidResult()
 
     def set_client_info(self, server_cmd, server_path):
-        self.server_cmd  = {KEY_NAME: server_cmd,  KEY_BODY: "", KEY_SELF: False}
-        self.server_path = {KEY_NAME: server_path, KEY_BODY: "", KEY_SELF: False}
+        self.server_cmd  = {KEY_NAME: None, KEY_BODY: server_cmd,  KEY_SELF: False}
+        self.server_path = {KEY_NAME: None, KEY_BODY: server_path, KEY_SELF: False}
 
     def generate_model_config(self):
         h_body = ""
@@ -135,9 +134,15 @@ class ClientGeneratorRTI1516():
             f.write(cpp_body)
 
     def generate_model_members(self) -> str:
-        h_body = f'// @callback({KEY_MEMBER})\n'
-        cpp_body = f'// @callback({KEY_INITIALIZE})\n'
+        h_body = f'// @callback({KEY_INITIALIZE})\n'
+        h_body += "void initializeHandles();\n"
 
+        cpp_body = f'// @callback({KEY_INITIALIZE})\n'
+        cpp_body += "void initializeHandles()\n{\n"
+        cpp_body += "\ttry\n"
+        cpp_body += "\t{\n"
+
+        h_body += f'\n// @{KEY_MEMBER}(private)\n'
         h, cpp = self.generate_model_parameters()
         h_body += h
         cpp_body += cpp
@@ -149,6 +154,13 @@ class ClientGeneratorRTI1516():
         h, cpp = self.generate_model_outputs()
         h_body += h
         cpp_body += cpp
+
+        cpp_body += "\t}\n"
+        cpp_body += "\tcatch (NameNotFound error)\n"
+        cpp_body += "\t{\n"
+        cpp_body += '\t\tstd::wcout << "Failed to initialize handles: " << error.what() << std::endl;\n'
+        cpp_body += "\t}\n"
+        cpp_body += "}\n"
 
         return h_body, cpp_body
 
@@ -406,7 +418,16 @@ class ClientGeneratorRTI1516():
 
     def generate_model_publications(self) -> str:
         h_body = ""
-        cpp_body = f'\n// @callback({KEY_PUBLISH})\n'
+        cpp_body = ""
+        if not self.config.has(KEY_PARAMETERS) and not self.config.has(KEY_OUTPUTS):
+            return h_body, cpp_body
+
+        h_body += f'\n// @callback({KEY_PUBLISH})\n'
+        h_body += f'void SetupPublishers();\n'
+
+        cpp_body += f'\n// @callback({KEY_PUBLISH})\n'
+        cpp_body += f'void SetupPublishers()\n'
+        cpp_body += "{\n"
 
         if self.config.has(KEY_PARAMETERS):
             cpp_body += "\tAttributeHandleSet pubAttributes;\n"
@@ -417,11 +438,21 @@ class ClientGeneratorRTI1516():
         if self.config.has(KEY_OUTPUTS):
             cpp_body += f'\trtiamb->publishInteractionClass({OUTPUT_HANDLER});\n'
 
+        cpp_body += "}\n"
         return h_body, cpp_body
 
     def generate_model_subscriptions(self) -> str:
         h_body = ""
-        cpp_body = f'\n// @callback({KEY_SUBSCRIBE})\n'
+        cpp_body = ""
+        if not self.config.has(KEY_PARAMETERS) and not self.config.has(KEY_OUTPUTS):
+            return h_body, cpp_body
+
+        h_body += f'\n// @callback({KEY_SUBSCRIBE})\n'
+        h_body += f'void SetupSubscribers();\n'
+
+        cpp_body += f'\n// @callback({KEY_SUBSCRIBE})\n'
+        cpp_body += f'void SetupSubscribers()\n'
+        cpp_body += "{\n"
 
         if self.config.has(KEY_PARAMETERS):
             cpp_body += "\tAttributeHandleSet subAttributes;\n"
@@ -432,4 +463,5 @@ class ClientGeneratorRTI1516():
         if self.config.has(KEY_INPUTS):
             cpp_body += f'\trtiamb->subscribeInteractionClass({INPUT_HANDLER});\n'
 
+        cpp_body += "}\n"
         return h_body, cpp_body

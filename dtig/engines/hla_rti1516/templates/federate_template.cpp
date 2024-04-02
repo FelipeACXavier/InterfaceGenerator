@@ -33,19 +33,19 @@ static const double STEP = 0.01;
 // @classname
 HLAFederate
 
-// @constructor
+// @constructor(public)
 HLAFederate()
 {
 }
 
-// @destructor
+// @destructor(public)
 ~HLAFederate()
 {
   if (mClient >= 0)
     close(mClient);
 }
 
-// @method
+// @method(private)
 std::wstring convertStringToWstring(const std::string& str)
 {
   const std::ctype<wchar_t>& CType = std::use_facet<std::ctype<wchar_t> >(std::locale());
@@ -57,9 +57,6 @@ std::wstring convertStringToWstring(const std::string& str)
 // @run
 void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port)
 {
-  ///
-  /// 1. create the RTIambassador
-  ///
   rti1516::RTIambassadorFactory* factory = new rti1516::RTIambassadorFactory();
   std::vector<std::wstring> args;
   args.push_back(L"protocol=rti");
@@ -67,11 +64,6 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   rtiamb = factory->createRTIambassador(args);
 
-  ///
-  /// 2. create and join to the federation
-  /// NOTE: some other federate may have already created the federation,
-  ///       in that case, we'll just try and join it
-  ///
   try
   {
     rtiamb->createFederationExecution(L"ExampleFederation", convertStringToWstring(fom));
@@ -87,10 +79,6 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     return;
   }
 
-  /////////////////////////////
-  /// 3. join the federation
-  /////////////////////////////
-  /// create the federate ambassador and join the federation
   fedamb = std::make_shared<// @>ambassador>();
 
   mName = federateName;
@@ -136,15 +124,8 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     return;
   }
 
-  /// initialize the handles - have to wait until we are joined
-  initializeHandles();
+  // @>callback(initialize)();
 
-  /////////////////////////////////
-  /// 4. announce the sync point
-  /////////////////////////////////
-  /// announce a sync point to get everyone on the same page. if the point
-  /// has already been registered, we'll get a callback saying it failed,
-  /// but we don't care about that, as long as someone registered it
   rtiamb->registerFederationSynchronizationPoint(convertStringToWstring(READY_TO_RUN), toVariableLengthData(""));
   std::cout << "SynchronizationPoint registered" << std::endl;
   while (fedamb->isAnnounced == false)
@@ -152,10 +133,6 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     rtiamb->evokeCallback(12.0);
   }
 
-  /// WAIT FOR USER TO KICK US OFF.\n
-  /// So that there is time to add other federates, we will wait until the
-  /// user hits enter before proceeding. That was, you have time to start
-  /// other federates.
   waitForUser();
 
   dti::MDTMessage sMessage;
@@ -172,11 +149,6 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     return;
   }
 
-  ////////////////////////////////////////////////////////
-  /// 5. achieve the point and wait for synchronization
-  ////////////////////////////////////////////////////////
-  /// tell the RTI we are ready to move past the sync point and then wait
-  /// until the federation has synchronized on
   rtiamb->synchronizationPointAchieved(convertStringToWstring(READY_TO_RUN));
   std::cout << "Achieved sync point: " << READY_TO_RUN << ", waiting for federation..." << std::endl;
   while (fedamb->isReadyToRun == false)
@@ -184,25 +156,12 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     rtiamb->evokeCallback(12.0);
   }
 
-  /////////////////////////////
-  // 6. enable time policies
-  /////////////////////////////
-  // in this section we enable/disable all time policies
-  // note that this step is optional!
   enableTimePolicy();
   std::cout << "Time Policy Enabled" << std::endl;
 
-  //////////////////////////////
-  // 7. publish and subscribe
-  //////////////////////////////
-  // in this section we tell the RTI of all the data we are going to
-  // produce, and all the data we want to know about
   publishAndSubscribe();
   std::cout << "Published and Subscribed" << std::endl;
 
-  /////////////////////////////////////
-  // 8. register an object to update
-  /////////////////////////////////////
   ObjectInstanceHandle objectHandle = registerObject();
 
   dti::MDTMessage aMessage;
@@ -210,15 +169,9 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   advanceMessage.mutable_step_size()->mutable_step()->mutable_fvalue()->set_value(STEP);
   *aMessage.mutable_advance() = advanceMessage;
 
-  ////////////////////////////////////
-  // 9. do the main simulation loop
-  ////////////////////////////////////
-  // here is where we do the meat of our work. in each iteration, we will
-  // update the attribute values of the object we registered, and will
-  // send an interaction.
   while (true)
   {
-    sendInteraction();
+    // @>callback(getoutput)();
 
     auto ret = SendMessage(aMessage);
     if (ret.code() == dti::ReturnCode::INVALID_STATE)
@@ -242,22 +195,11 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   if (stopRet.code() != dti::ReturnCode::SUCCESS)
     std::cout << "Failed to start: " << stopRet.error_message().value() << std::endl;
 
-  //////////////////////////////////////
-  // 10. delete the object we created
-  //////////////////////////////////////
   deleteObject(objectHandle);
 
-  ////////////////////////////////////
-  // 11. resign from the federation
-  ////////////////////////////////////
   rtiamb->resignFederationExecution(NO_ACTION);
   std::cout << "Resigned from Federation" << std::endl;
 
-  ////////////////////////////////////////
-  // 12. try and destroy the federation
-  ////////////////////////////////////////
-  // NOTE: we won't die if we can't do this because other federates
-  //       remain. in that case we'll leave it for them to clean up
   try
   {
     rtiamb->destroyFederationExecution(L"ExampleFederation");
@@ -273,27 +215,14 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   }
 }
 
-// @method
-void initializeHandles()
-{
-  try
-  {
-    // @>callback(initialize)
-  }
-  catch (NameNotFound error)
-  {
-    std::wcout << "Failed to initialize handles: " << error.what() << std::endl;
-  }
-}
-
-// @method
+// @method(private)
 void waitForUser()
 {
   std::cout << " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" << std::endl;
   (void)getchar();
 }
 
-// @method
+// @method(private)
 void enableTimePolicy()
 {
   /////////////////////////////
@@ -320,7 +249,7 @@ void enableTimePolicy()
   }
 }
 
-// @method
+// @method(private)
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
@@ -331,35 +260,29 @@ void publishAndSubscribe()
     // @>callback(setinput)(theInteraction, theParameterValues);
   };
 
-  // @>callback(subscribe)
-  // @>callback(publish)
+  // @>callback(subscribe)();
+  // @>callback(publish)();
 }
 
-// @method
+// @method(private)
 ObjectInstanceHandle registerObject()
 {
   return rtiamb->registerObjectInstance(rtiamb->getObjectClassHandle(L"ObjectRoot.Parameters"));
 }
 
-// @method
+// @method(private)
 rti1516::VariableLengthData toVariableLengthData(const char* s)
 {
   return toData(s);
 }
 
-// @method
+// @method(private)
 void updateAttributeValues(ObjectInstanceHandle objectHandle)
 {
   // @>callback(getparameter)(objectHandle);
 }
 
-// @method
-void sendInteraction()
-{
-  // @>callback(getoutput)();
-}
-
-// @method
+// @method(private)
 void advanceTime(double timestep)
 {
   /// request the advance
@@ -375,19 +298,13 @@ void advanceTime(double timestep)
   }
 }
 
-// @method
+// @method(private)
 void deleteObject(ObjectInstanceHandle objectHandle)
 {
   rtiamb->deleteObjectInstance(objectHandle, toVariableLengthData(""));
 }
 
-// @method
-double getLbts()
-{
-  return (fedamb->federateTime + fedamb->federateLookahead);
-}
-
-// @method
+// @method(private)
 dti::MReturnValue SendMessage(const google::protobuf::Message& message)
 {
   dti::MReturnValue result;

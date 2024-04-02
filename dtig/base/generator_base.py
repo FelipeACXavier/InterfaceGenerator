@@ -6,15 +6,8 @@ from abc import abstractmethod
 
 from dtig.common.keys import *
 from dtig.common.logging import *
-from dtig.common.result import VoidResult
+from dtig.common.result import Result, VoidResult
 from dtig.common.model_configuration_base import ModelConfigurationBase
-
-class TemplateItem:
-  def __init__(self, name, body, is_method):
-    self.name = name
-    self.body = body
-    self.is_method = is_method
-
 
 class GeneratorBase():
     # Must be called from any children so members are initialized
@@ -30,80 +23,71 @@ class GeneratorBase():
         self.function_regex = None
         self.function_definition = None
         self.callbacks = {
-            KEY_IMPORTS         : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
-            KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
-            KEY_STATES          : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
-            KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: False},
+            KEY_IMPORTS         : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: False},
+            KEY_MAIN            : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: False},
+            KEY_STATES          : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: False},
+            KEY_CLASS_NAME      : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: False},
+            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : None,  KEY_SELF: True},
+            KEY_MESSAGE_HANDLER : {KEY_NAME : "handle_message", KEY_BODY : None,  KEY_SELF: True},
+            KEY_RUN_SERVER      : {KEY_NAME : "run_server",     KEY_BODY : None,  KEY_SELF: True},
+            KEY_RUN_CLIENT      : {KEY_NAME : "run_client",     KEY_BODY : None,  KEY_SELF: True},
+            KEY_RUN_MODEL       : {KEY_NAME : "run_model",      KEY_BODY : None,  KEY_SELF: True},
+
             KEY_INHERIT         : {
-                KEY_NAME : None,
-                KEY_BODY : [],
-                KEY_SELF : False,
                 KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False},
                 KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False}
             },
             KEY_CONSTRUCTOR     : {
-                KEY_NAME : None,
-                KEY_BODY : "",
-                KEY_SELF: True,
-                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True},
-                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True}
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: True}
             },
             KEY_DESTRUCTOR      : {
-                KEY_NAME : None,
-                KEY_BODY : "",
-                KEY_SELF: True,
-                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True},
-                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : "",  KEY_SELF: True}
-            },
-            KEY_RUN             : {KEY_NAME : "run",            KEY_BODY : "",  KEY_SELF: True},
-            KEY_MESSAGE_HANDLER : {KEY_NAME : "handle_message", KEY_BODY : "",  KEY_SELF: True},
-            KEY_RUN_SERVER      : {KEY_NAME : "run_server",     KEY_BODY : "",  KEY_SELF: True},
-            KEY_RUN_CLIENT      : {KEY_NAME : "run_client",     KEY_BODY : "",  KEY_SELF: True},
-            KEY_METHOD          : {
-                KEY_NAME : None,
-                KEY_BODY : [],
-                KEY_SELF: True,
-                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True},
-                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True}
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : None,  KEY_SELF: True}
             },
             KEY_MEMBER          : {
-                KEY_NAME : None,
-                KEY_BODY : [],
-                KEY_SELF: False,
                 KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False},
                 KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: False}
             },
+            KEY_METHOD          : {
+                KEY_PRIVATE     : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True},
+                KEY_PUBLIC      : {KEY_NAME : None,             KEY_BODY : [],  KEY_SELF: True}
+            },
             KEY_PARSE : {
-                KEY_STOP        : {KEY_NAME : "parse_stop",       KEY_BODY : "", KEY_SELF : True},
-                KEY_START       : {KEY_NAME : "parse_start",      KEY_BODY : "", KEY_SELF : True},
-                KEY_SET_INPUT   : {KEY_NAME : "parse_set_input",  KEY_BODY : "", KEY_SELF : True},
-                KEY_GET_OUTPUT  : {KEY_NAME : "parse_get_output", KEY_BODY : "", KEY_SELF : True},
-                KEY_SET_PARAM   : {KEY_NAME : "parse_set_param",  KEY_BODY : "", KEY_SELF : True},
-                KEY_GET_PARAM   : {KEY_NAME : "parse_get_param",  KEY_BODY : "", KEY_SELF : True},
-                KEY_ADVANCE     : {KEY_NAME : "parse_advance",    KEY_BODY : "", KEY_SELF : True},
-                KEY_INITIALIZE  : {KEY_NAME : "parse_initialize", KEY_BODY : "", KEY_SELF : True},
-                KEY_MODEL_INFO  : {KEY_NAME : "parse_model_info", KEY_BODY : "", KEY_SELF : True},
+                KEY_STOP        : {KEY_NAME : "parse_stop",       KEY_BODY : None, KEY_SELF : True},
+                KEY_START       : {KEY_NAME : "parse_start",      KEY_BODY : None, KEY_SELF : True},
+                KEY_SET_INPUT   : {KEY_NAME : "parse_set_input",  KEY_BODY : None, KEY_SELF : True},
+                KEY_GET_OUTPUT  : {KEY_NAME : "parse_get_output", KEY_BODY : None, KEY_SELF : True},
+                KEY_SET_PARAM   : {KEY_NAME : "parse_set_param",  KEY_BODY : None, KEY_SELF : True},
+                KEY_GET_PARAM   : {KEY_NAME : "parse_get_param",  KEY_BODY : None, KEY_SELF : True},
+                KEY_ADVANCE     : {KEY_NAME : "parse_advance",    KEY_BODY : None, KEY_SELF : True},
+                KEY_INITIALIZE  : {KEY_NAME : "parse_initialize", KEY_BODY : None, KEY_SELF : True},
+                KEY_MODEL_INFO  : {KEY_NAME : "parse_model_info", KEY_BODY : None, KEY_SELF : True},
+                KEY_PUBLISH     : {KEY_NAME : "parse_initialize", KEY_BODY : None, KEY_SELF : True},
+                KEY_SUBSCRIBE   : {KEY_NAME : "parse_model_info", KEY_BODY : None, KEY_SELF : True},
             },
             KEY_CALLBACK : {
-                KEY_IMPORTS     : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_CONSTRUCTOR : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_DESTRUCTOR  : {KEY_NAME : None,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_RUN         : {KEY_NAME : "run_model",            KEY_BODY : "", KEY_SELF: True},
-                KEY_STOP        : {KEY_NAME : "stop_callback",        KEY_BODY : "", KEY_SELF: True},
-                KEY_START       : {KEY_NAME : "start_callback",       KEY_BODY : "", KEY_SELF: True},
-                KEY_SET_INPUT   : {KEY_NAME : "set_input_callback",   KEY_BODY : "", KEY_SELF: True},
-                KEY_GET_OUTPUT  : {KEY_NAME : "get_output_callback",  KEY_BODY : "", KEY_SELF: True},
-                KEY_ADVANCE     : {KEY_NAME : "advance_callback",     KEY_BODY : "", KEY_SELF: True},
-                KEY_INITIALIZE  : {KEY_NAME : "initialize_callback",  KEY_BODY : "", KEY_SELF: True},
-                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback",  KEY_BODY : "", KEY_SELF: True},
-                KEY_SET_PARAM   : {KEY_NAME : "set_param_callback",   KEY_BODY : "", KEY_SELF : True},
-                KEY_GET_PARAM   : {KEY_NAME : "get_param_callback",   KEY_BODY : "", KEY_SELF : True},
-                KEY_MEMBER      : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_PUBLISH     : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
-                KEY_SUBSCRIBE   : {KEY_NAME : ""  ,                   KEY_BODY : "", KEY_SELF: False},
+                KEY_IMPORTS     : {KEY_NAME : None,                   KEY_BODY : None, KEY_SELF: False},
+                KEY_CONSTRUCTOR : {KEY_NAME : None,                   KEY_BODY : None, KEY_SELF: False},
+                KEY_MEMBER      : {KEY_NAME : None,                   KEY_BODY : None, KEY_SELF: False},
+                KEY_METHOD      : {KEY_NAME : None,                   KEY_BODY : None, KEY_SELF: False},
+                KEY_DESTRUCTOR  : {KEY_NAME : None,                   KEY_BODY : None, KEY_SELF: False},
+                KEY_RUN         : {KEY_NAME : "run",                  KEY_BODY : None, KEY_SELF: True},
+                KEY_RUN_MODEL   : {KEY_NAME : "run_model",            KEY_BODY : None, KEY_SELF: True},
+                KEY_STOP        : {KEY_NAME : "stop_callback",        KEY_BODY : None, KEY_SELF: True},
+                KEY_START       : {KEY_NAME : "start_callback",       KEY_BODY : None, KEY_SELF: True},
+                KEY_SET_INPUT   : {KEY_NAME : "set_input_callback",   KEY_BODY : None, KEY_SELF: True},
+                KEY_GET_OUTPUT  : {KEY_NAME : "get_output_callback",  KEY_BODY : None, KEY_SELF: True},
+                KEY_ADVANCE     : {KEY_NAME : "advance_callback",     KEY_BODY : None, KEY_SELF: True},
+                KEY_INITIALIZE  : {KEY_NAME : "initialize_callback",  KEY_BODY : None, KEY_SELF: True},
+                KEY_MODEL_INFO  : {KEY_NAME : "model_info_callback",  KEY_BODY : None, KEY_SELF: True},
+                KEY_SET_PARAM   : {KEY_NAME : "set_param_callback",   KEY_BODY : None, KEY_SELF: True},
+                KEY_GET_PARAM   : {KEY_NAME : "get_param_callback",   KEY_BODY : None, KEY_SELF: True},
+                KEY_PUBLISH     : {KEY_NAME : "setup_subscribers",    KEY_BODY : None, KEY_SELF: True},
+                KEY_SUBSCRIBE   : {KEY_NAME : "setup_publishers",     KEY_BODY : None, KEY_SELF: True},
             },
             KEY_NEW             : {},
-            }
+        }
 
     def new_callback(self, key, data):
         self.callbacks[KEY_NEW][key] = data
@@ -166,28 +150,25 @@ class GeneratorBase():
 
                 function_id, function_args = self.function_from_key(definition, callback_name)
 
-                LOG_TRACE(f'Function {function_id} with args {function_args}')
+                LOG_TRACE(f'Function {function_id} with args: {function_args}')
                 # Set default callback name
                 default = self.function_definition(function_id, function_args)
                 body = body[:definition.start()] + default + body[definition.end():]
 
-            if not decorator_arg:
-                if name == KEY_METHOD:
-                    self.callbacks[name][KEY_BODY].append("\n" + body + "\n")
-                elif name == KEY_INHERIT:
-                    self.callbacks[name][KEY_BODY].append(body)
-                elif name == KEY_CLASS_NAME:
-                    self.callbacks[name][KEY_NAME] = body
-                    break
-                else:
-                    self.callbacks[name][KEY_BODY] = "\n" + body + "\n"
-            else:
-                if name == KEY_INHERIT:
+            # If we are dealing with:
+            # KEY_CALLBACK      KEY_PARSE
+            # KEY_METHOD        KEY_MEMBER
+            # KEY_CONSTRUCTOR   KEY_DESTRUCTOR
+            # KEY_INHERIT
+            if decorator_arg:
+                if name == KEY_INHERIT or name == KEY_MEMBER:
                     self.callbacks[name][decorator_arg][KEY_BODY].append(body)
-                elif decorator_arg == KEY_MEMBER:
-                    self.callbacks[name][decorator_arg][KEY_NAME] += body
+                elif name == KEY_METHOD:
+                    self.callbacks[name][decorator_arg][KEY_BODY].append(f'\n{body}\n')
                 else:
-                    self.callbacks[name][decorator_arg][KEY_BODY] = "\n" + body + "\n"
+                    self.callbacks[name][decorator_arg][KEY_BODY] = f'\n{body}\n'
+            else:
+                self.callbacks[name][KEY_BODY] = f'\n{body}\n' if self.callbacks[name][KEY_SELF] else f'{body}'
 
         return VoidResult()
 
@@ -208,17 +189,129 @@ class GeneratorBase():
         return contents
 
     def is_valid_key(self, key):
-        return key and key in self.callbacks[KEY_CALLBACK].keys()
+        return key and key in self.callbacks.keys()
 
-    def get_definitions(self):
-        return self.callbacks
+    def is_valid_callback(self, key):
+        return key and (key in self.callbacks[KEY_CALLBACK].keys() \
+                        or key == KEY_PRIVATE or key == KEY_PUBLIC)
+
+    def generate_imports(self) -> Result:
+        if self.callbacks[KEY_IMPORTS][KEY_BODY] and not self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
+            return Result(self.callbacks[KEY_IMPORTS][KEY_BODY])
+        elif self.callbacks[KEY_IMPORTS][KEY_BODY] and self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
+            return Result(self.callbacks[KEY_IMPORTS][KEY_BODY] \
+                          + self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY])
+        else:
+            return Result("")
+
+    def generate_states(self) -> Result:
+        if self.callbacks[KEY_STATES][KEY_BODY]:
+            return Result(self.callbacks[KEY_STATES][KEY_BODY])
+
+        return Result("")
+
+    def generate_class(self) -> Result:
+        if self.callbacks[KEY_CLASS_NAME][KEY_BODY]:
+            return Result(self.callbacks[KEY_CLASS_NAME][KEY_BODY])
+
+        return Result("")
+
+    def generate_constructor(self) -> Result:
+        body = ""
+        for key, access in self.callbacks[KEY_CONSTRUCTOR].items():
+            if access[KEY_BODY]:
+                body += access[KEY_BODY]
+
+        if self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY]
+
+        return Result(body)
+
+    def generate_destructor(self) -> Result:
+        body = ""
+        for key, access in self.callbacks[KEY_DESTRUCTOR].items():
+            if access[KEY_BODY]:
+                body += access[KEY_BODY]
+
+        if self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY]
+
+        return Result(body)
+
+    def generate_message_handler(self) -> Result:
+        body = ""
+        if self.callbacks[KEY_MESSAGE_HANDLER][KEY_BODY]:
+            body += self.callbacks[KEY_MESSAGE_HANDLER][KEY_BODY]
+
+        generated = self.generate_message_parsers()
+        if generated:
+            body += generated.value()
+
+        return Result(body)
+
+    def generate_run(self) -> Result:
+        body = ""
+        if self.callbacks[KEY_RUN][KEY_BODY]:
+            body += self.callbacks[KEY_RUN][KEY_BODY]
+
+        if self.callbacks[KEY_RUN_MODEL][KEY_BODY]:
+            body += self.callbacks[KEY_RUN_MODEL][KEY_BODY]
+
+        if self.callbacks[KEY_CALLBACK][KEY_RUN_MODEL][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_RUN_MODEL][KEY_BODY]
+
+        if self.callbacks[KEY_RUN_SERVER][KEY_BODY]:
+            body += self.callbacks[KEY_RUN_SERVER][KEY_BODY]
+
+        if self.callbacks[KEY_RUN_CLIENT][KEY_BODY]:
+            body += self.callbacks[KEY_RUN_CLIENT][KEY_BODY]
+
+        for key, access in self.callbacks[KEY_METHOD].items():
+            for method in access[KEY_BODY]:
+                body += method
+
+        return Result(body)
+
+    def generate_main(self) -> Result:
+        if self.callbacks[KEY_MAIN][KEY_BODY]:
+            return Result(self.callbacks[KEY_MAIN][KEY_BODY])
+
+        return Result("")
+
+    def generate_message_parsers(self) -> Result:
+        body = ""
+        for key, method in self.callbacks[KEY_PARSE].items():
+            if method[KEY_BODY]:
+                body += method[KEY_BODY]
+
+            if self.callbacks[KEY_CALLBACK][key][KEY_BODY]:
+                body += self.callbacks[KEY_CALLBACK][key][KEY_BODY]
+
+        return Result(body)
+
+    def name_from_key(self, groups):
+        name = groups[0]
+        args = groups[1]
+        callback = groups[2]
+
+        if callback:
+            if self.is_valid_callback(callback):
+                if self.callbacks[name][callback][KEY_NAME]:
+                    return f'{self.callbacks[name][callback][KEY_NAME]}'
+                else:
+                    return f'{self.callbacks[name][callback][KEY_BODY]}'
+            else:
+                return  f'{self.callbacks[name][KEY_NAME]}{args}'
+        else:
+            if self.is_valid_callback(name):
+                return f'{self.callbacks[KEY_CALLBACK][name][KEY_NAME]}{args if args else ""}'
+            elif self.is_valid_key(name):
+                return f'{self.callbacks[name][KEY_BODY]}{args if args else ""}'
+            else:
+                return f'{self.callbacks[KEY_NEW][name][KEY_BODY]}{args if args else ""}'
 
     @abstractmethod
     def function_from_key(self, groups, default_name):
         raise Exception("arguments_from_key must be implemented")
-
-    @abstractmethod
-    def name_from_key(self, groups):
-        raise Exception("name_from_key must be implemented")
 
 

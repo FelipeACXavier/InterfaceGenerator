@@ -109,7 +109,7 @@ def parse_model_info() -> Message:
 
     return return_value
 
-# @method
+# @method(public)
 def variable_to_info(variable):
     info = dti_info.MInfo()
     if variable.valueReference:
@@ -126,7 +126,7 @@ def variable_to_info(variable):
 
     return info
 
-# @callback(run)
+# @callback(runmodel)
 def run_model() -> None:
     with self.condition:
         self.condition.wait_for(lambda: self.state == State.INITIALIZING or self.state == State.STOPPED)

@@ -1,9 +1,8 @@
 import os
-import subprocess
-
 import json
 
-from dtig.tools import python
+from pathlib import Path
+from dtig.tools import matlab
 
 from dtig.common.keys import *
 from dtig.common.result import *
@@ -14,30 +13,25 @@ from dtig.common.model_configuration_base import ModelConfigurationBase
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
 
-
 class ServerGenerator(GeneratorBase):
     def __init__(self, output_file):
         super().__init__(output_file)
 
         # Set the function definition
-        self.function_definition = lambda name, args: f'def {name}({args}):'
+        self.function_definition = lambda name, args: f'function {name}({args})'
 
         # First groups must be the function name and the second group should be the arguments
-        self.comment_char = fr'#'
-        self.function_regex = fr'def(.*)\((.*)\).*:'
+        self.function_regex = fr'^function ([\/@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
+        self.comment_char = fr'%'
 
     def read_templates(self) -> VoidResult:
         self.common_template_file = engine_folder + \
-            "/templates/python_server_template.py"
-        python.format(self.common_template_file)
+            "/templates/matlab_server_template.m"
 
         LOG_DEBUG(f'Parsing common template: {self.common_template_file}')
-        formatting = python.format(self.common_template_file)
-        if not formatting.is_success():
-            return formatting
 
         # First, parse the common interface template
-        data = python.read_file(self.common_template_file)
+        data = matlab.read_file(self.common_template_file)
 
         result = self.parse_template(
             data, KEY_CLASS_NAME, has_argument=False, maximum=1)
@@ -95,22 +89,20 @@ class ServerGenerator(GeneratorBase):
             return VoidResult.failed(f'Failed to read parse: {result}')
 
         LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
-        formatting = python.format(self.engine_template_file)
-        if not formatting.is_success():
-            return formatting
 
         # Then parse the engine template
-        data = python.read_file(self.engine_template_file)
+        if self.engine_template_file:
+            data = matlab.read_file(self.engine_template_file)
 
-        result = self.parse_template(
-            data, KEY_CALLBACK, has_argument=True, maximum=10)
-        if not result.is_success():
-            return VoidResult.failed(f'Failed to read callback file: {result}')
+            result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=10)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read callback file: {result}')
 
-        result = self.parse_template(
-            data, KEY_METHOD, has_argument=False, maximum=None)
-        if not result.is_success():
-            return VoidResult.failed(f'Failed to read method: {result}')
+            result = self.parse_template(
+                data, KEY_METHOD, has_argument=False, maximum=None)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read method: {result}')
 
         return VoidResult()
 
@@ -155,13 +147,13 @@ class ServerGenerator(GeneratorBase):
         creation = self.generate_run()
         if not creation.is_success():
             return creation
-        file_contents += python.set_indentation(creation.value(), level=1)
+        file_contents += creation.value()
 
         # Generate message handler
         creation = self.generate_message_handler()
         if not creation.is_success():
             return creation
-        file_contents += python.set_indentation(creation.value(), level=1)
+        file_contents += creation.value()
 
         # Generate main
         creation = self.generate_main()
@@ -174,35 +166,13 @@ class ServerGenerator(GeneratorBase):
         with open(self.output_file, "w") as file:
             file.write(file_contents)
 
-        return python.format(self.output_file)
+        return VoidResult()
 
     def generate_class(self) -> Result:
-        if self.callbacks[KEY_CLASS_NAME][KEY_BODY]:
-            return Result("\nclass " + self.callbacks[KEY_CLASS_NAME][KEY_BODY] + ":")
+        if self.callbacks[KEY_CLASS_NAME][KEY_NAME]:
+            return Result("\nclass " + self.callbacks[KEY_CLASS_NAME][KEY_NAME] + ":")
 
         return Result("")
-
-    def generate_constructor(self) -> Result:
-        body = ""
-        for key, access in self.callbacks[KEY_CONSTRUCTOR].items():
-            if access[KEY_BODY]:
-                body += python.set_indentation(access[KEY_BODY], level=1)
-
-        if self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY]:
-            body += python.set_indentation(self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY], level=2)
-
-        return Result(body)
-
-    def generate_destructor(self) -> Result:
-        body = ""
-        for key, access in self.callbacks[KEY_DESTRUCTOR].items():
-            if access[KEY_BODY]:
-                body += python.set_indentation(access[KEY_BODY], level=1)
-
-        if self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY]:
-            body += python.set_indentation(self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY], level=2)
-
-        return Result(body)
 
     def name_from_key(self, groups):
         name = groups[0]
@@ -211,17 +181,12 @@ class ServerGenerator(GeneratorBase):
 
         if callback:
             if self.is_valid_callback(callback):
-                if self.callbacks[name][callback][KEY_NAME]:
-                    return f'self.{self.callbacks[name][callback][KEY_NAME]}'
-                else:
-                    return f'self.{self.callbacks[name][callback][KEY_BODY]}'
+                return f'self.{self.callbacks[name][callback][KEY_NAME]}'
             else:
-                return  f'self.{self.callbacks[name][KEY_NAME]}{args}'
+                return f'self.{self.callbacks[name][KEY_NAME]}{args}'
         else:
-            if self.is_valid_callback(name):
+            if name in self.callbacks:
                 return f'{self.callbacks[name][KEY_NAME]}{args if args else ""}'
-            elif self.is_valid_key(name):
-                return f'{self.callbacks[name][KEY_BODY]}{args if args else ""}'
             else:
                 return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
 
@@ -233,17 +198,3 @@ class ServerGenerator(GeneratorBase):
             function_args = ("self, " + function_args).strip().rstrip(",")
 
         return function_id, function_args
-
-
-# =======================================================================
-# Client generator
-#
-# Base class used to create common interface clients in python
-# =======================================================================
-class ClientGenerator(GeneratorBase):
-    def __init__(self, output_file):
-       super().__init__(output_file)
-
-    def generate(self, config: ModelConfigurationBase) -> VoidResult:
-        return VoidResult.failed("Not implemented")
-

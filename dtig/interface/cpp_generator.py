@@ -164,7 +164,7 @@ class HppGenerator(GeneratorBase):
             return creation
         file_contents += creation.value()
 
-        if self.callbacks[KEY_CLASS_NAME][KEY_NAME]:
+        if self.callbacks[KEY_CLASS_NAME][KEY_BODY]:
             file_contents += "};\n"
 
         file_contents = self.replace_calls(file_contents)
@@ -176,74 +176,64 @@ class HppGenerator(GeneratorBase):
 
     def generate_imports(self) -> Result:
         body = "#pragma once\n"
-        body += self.callbacks[KEY_IMPORTS][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]
+        generated = super().generate_imports()
+        if generated:
+            body += generated.value()
+
         return Result(body)
 
-    def generate_states(self) -> Result:
-        return Result(self.callbacks[KEY_STATES][KEY_BODY])
-
     def generate_class(self) -> Result:
-        if self.callbacks[KEY_CLASS_NAME][KEY_NAME]:
+        if self.callbacks[KEY_CLASS_NAME][KEY_BODY]:
             inheritance = self.generate_inherit()
             if not inheritance:
                 return inheritance
 
             inherit_string = "" if len(inheritance.value()) < 1 else f':{inheritance.value()}'
-            return Result(f'\nclass {self.callbacks[KEY_CLASS_NAME][KEY_NAME]}{inherit_string}\n{{')
+            return Result(f'\nclass {self.callbacks[KEY_CLASS_NAME][KEY_BODY]}{inherit_string}\n{{')
 
         return Result("")
-
-    def generate_constructor(self) -> Result:
-        return Result(
-                self.callbacks[KEY_CONSTRUCTOR][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY])
-
-    def generate_destructor(self) -> Result:
-        return Result(self.callbacks[KEY_DESTRUCTOR][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY])
-
-    def generate_message_handler(self) -> Result:
-        return Result(self.callbacks[KEY_MESSAGE_HANDLER][KEY_BODY] + self.generate_message_parsers())
 
     def generate_run(self) -> Result:
         body = ""
 
-        if len(self.callbacks[KEY_METHOD][KEY_PUBLIC][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_METHOD][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_MEMBER][KEY_PUBLIC][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_MEMBER][KEY_BODY]) \
-            or len(self.callbacks[KEY_CONSTRUCTOR][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_DESTRUCTOR][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_CALLBACK][KEY_MEMBER][KEY_BODY]) > 0:
-            body += "\npublic:"
+        if self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY] \
+            or self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY] \
+            or self.callbacks[KEY_METHOD][KEY_PUBLIC][KEY_BODY]\
+            or self.callbacks[KEY_MEMBER][KEY_PUBLIC][KEY_BODY]:
+            body += "\npublic:\n"
 
-        body += self.callbacks[KEY_CONSTRUCTOR][KEY_BODY]
-        body += self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]
-        body += self.callbacks[KEY_DESTRUCTOR][KEY_BODY]
-        body += self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]
+        if self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]:
+            LOG_INFO(f'Adding: {self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]}')
+            body += self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]
 
-        body += self.callbacks[KEY_CALLBACK][KEY_MEMBER][KEY_BODY]
+        if self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]:
+            body += self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]
 
-        for member in self.callbacks[KEY_MEMBER][KEY_BODY]:
-            body += member
         for member in self.callbacks[KEY_MEMBER][KEY_PUBLIC][KEY_BODY]:
             body += member
         for method in self.callbacks[KEY_METHOD][KEY_PUBLIC][KEY_BODY]:
             body += method
-        for method in self.callbacks[KEY_METHOD][KEY_BODY]:
-            body += method
 
-        body += self.callbacks[KEY_RUN][KEY_BODY]
-        body += self.callbacks[KEY_CALLBACK][KEY_RUN][KEY_BODY]
-        body += self.callbacks[KEY_RUN_SERVER][KEY_BODY]
+        if self.callbacks[KEY_RUN][KEY_BODY]:
+            body += self.callbacks[KEY_RUN][KEY_BODY]
 
-        if len(self.callbacks[KEY_METHOD][KEY_PRIVATE][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_MEMBER][KEY_PRIVATE][KEY_BODY]) > 0 \
-            or len(self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY]) > 0:
-            body += "\nprivate:"
+        if self.callbacks[KEY_CALLBACK][KEY_RUN_MODEL][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_RUN_MODEL][KEY_BODY]
 
-        body += self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY]
-        body += self.callbacks[KEY_DESTRUCTOR][KEY_PRIVATE][KEY_BODY]
+        if self.callbacks[KEY_RUN_SERVER][KEY_BODY]:
+            body += self.callbacks[KEY_RUN_SERVER][KEY_BODY]
+
+        if self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY] \
+            or self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY] \
+            or self.callbacks[KEY_METHOD][KEY_PRIVATE][KEY_BODY] \
+            or self.callbacks[KEY_MEMBER][KEY_PRIVATE][KEY_BODY]:
+            body += "\nprivate:\n"
+
+        if self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY]:
+            body += self.callbacks[KEY_CONSTRUCTOR][KEY_PRIVATE][KEY_BODY]
+
+        if self.callbacks[KEY_DESTRUCTOR][KEY_PRIVATE][KEY_BODY]:
+            body += self.callbacks[KEY_DESTRUCTOR][KEY_PRIVATE][KEY_BODY]
 
         for member in self.callbacks[KEY_MEMBER][KEY_PRIVATE][KEY_BODY]:
             body += member
@@ -252,14 +242,8 @@ class HppGenerator(GeneratorBase):
 
         return Result(body)
 
-    def generate_main(self) -> Result:
-        return Result(self.callbacks[KEY_MAIN][KEY_BODY])
-
     def generate_inherit(self) -> Result:
         body = ""
-
-        for name in self.callbacks[KEY_INHERIT][KEY_BODY]:
-            body += f' public {name},'
 
         for name in self.callbacks[KEY_INHERIT][KEY_PUBLIC][KEY_BODY]:
             body += f' public {name},'
@@ -269,39 +253,46 @@ class HppGenerator(GeneratorBase):
 
         return Result(body.rstrip(","))
 
-    def generate_message_parsers(self) -> str:
-        body = str()
+    def generate_message_parsers(self) -> Result:
+        body = ""
         for key, method in self.callbacks[KEY_PARSE].items():
-            body += method[KEY_BODY] + self.callbacks[KEY_CALLBACK][key][KEY_BODY]
+            if method[KEY_BODY]:
+                body += method[KEY_BODY]
 
-        return body
+        return Result(body)
 
     def name_from_key(self, groups):
         name = groups[0]
         args = groups[1]
         callback = groups[2]
 
-        LOG_INFO(f'Replacing: {groups}')
         if callback:
-            if self.is_valid_key(callback):
-                if self.callbacks[name][callback][KEY_NAME]:
+            if self.is_valid_callback(callback):
+                if self.callbacks[name][callback][KEY_BODY]:
+                    return f'{self.callbacks[name][callback][KEY_BODY]}'
+                elif self.callbacks[name][callback][KEY_NAME]:
                     return f'{self.callbacks[name][callback][KEY_NAME]}'
                 else:
-                    return f'{self.callbacks[name][callback][KEY_BODY]}'
+                    return ""
             else:
-                return  f'{self.callbacks[name][KEY_NAME]}{args}'
+                return  f'{self.callbacks[name][KEY_BODY]}{args}'
         else:
-            if name in self.callbacks:
-                return f'{self.callbacks[name][KEY_NAME]}{args if args else ""}'
+            if self.is_valid_callback(name):
+                return f'{self.callbacks[KEY_CALLBACK][name][KEY_NAME]}{args if args else ""}'
+            elif self.is_valid_key(name):
+                return f'{self.callbacks[name][KEY_BODY]}{args if args else ""}'
             else:
-                return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
+                return f'{self.callbacks[KEY_NEW][name][KEY_BODY]}{args if args else ""}'
 
     def function_from_key(self, groups, default_name):
         ctype = groups.groups()[0].strip()
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
 
-        function_id = f'{ctype} {name}'
+        if len(ctype) > 0:
+            function_id = f'{ctype} {name}'
+        else:
+            function_id = f'{name}'
 
         function_args = args
         return function_id, function_args
@@ -450,8 +441,9 @@ class CppGenerator(GeneratorBase):
             file.write(self.replace_calls(file_contents))
 
         # Create main file if @main is defined
-        if len(self.callbacks[KEY_MAIN][KEY_BODY]) > 0:
+        if self.callbacks[KEY_MAIN][KEY_BODY]:
             main_file = os.path.dirname(self.output_file) + "/main.cpp"
+
             LOG_DEBUG(f'Writing main file to {main_file}')
             with open(main_file, "w") as file:
                 creation = self.generate_main()
@@ -466,76 +458,36 @@ class CppGenerator(GeneratorBase):
         body = ""
         if self.header_name:
             body = f'#include "{self.header_name}"\n'
-        body += self.callbacks[KEY_IMPORTS][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]
-        return Result(body)
 
-    def generate_states(self) -> Result:
-        return Result(self.callbacks[KEY_STATES][KEY_BODY])
+        generated = super().generate_imports()
+        if generated:
+            body += generated.value()
+
+        return Result(body)
 
     def generate_class(self) -> Result:
         if self.callbacks[KEY_CLASS_NAME][KEY_NAME]:
             return Result("\nclass " + self.callbacks[KEY_CLASS_NAME][KEY_NAME] + "{")
+
         return Result("")
-
-    def generate_constructor(self) -> Result:
-        return Result(
-                self.callbacks[KEY_CONSTRUCTOR][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_CONSTRUCTOR][KEY_BODY])
-
-    def generate_destructor(self) -> Result:
-        return Result(self.callbacks[KEY_DESTRUCTOR][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_DESTRUCTOR][KEY_BODY])
-
-    def generate_message_handler(self) -> Result:
-        return Result(self.callbacks[KEY_MESSAGE_HANDLER][KEY_BODY] + self.generate_message_parsers())
-
-    def generate_run(self) -> Result:
-        body = self.callbacks[KEY_RUN][KEY_BODY] + self.callbacks[KEY_CALLBACK][KEY_RUN][KEY_BODY] + self.callbacks[KEY_RUN_SERVER][KEY_BODY]
-
-        for method in self.callbacks[KEY_METHOD][KEY_BODY]:
-            body += method
-
-        return Result(body)
 
     def generate_main(self) -> Result:
         body = ""
         if self.header_name:
             body = f'#include "{self.header_name}"\n'
 
-        body += self.callbacks[KEY_MAIN][KEY_BODY]
+        generated = super().generate_main()
+        if generated:
+            body += generated.value()
+
         return Result(body)
-
-    def generate_message_parsers(self) -> str:
-        body = str()
-        for key, method in self.callbacks[KEY_PARSE].items():
-            body += method[KEY_BODY] + \
-                self.callbacks[KEY_CALLBACK][key][KEY_BODY] if self.callbacks[KEY_CALLBACK][key][KEY_SELF] else ""
-
-        return body
-
-    def name_from_key(self, groups):
-        name = groups[0]
-        args = groups[1]
-        callback = groups[2]
-
-        if callback:
-            if self.is_valid_key(callback):
-                if self.callbacks[name][callback][KEY_NAME]:
-                    return f'{self.callbacks[name][callback][KEY_NAME]}'
-                else:
-                    return f'{self.callbacks[name][callback][KEY_BODY]}'
-            else:
-                return  f'{self.callbacks[name][KEY_NAME]}{args}'
-        else:
-            if name in self.callbacks:
-                return f'{self.callbacks[name][KEY_NAME]}{args if args else ""}'
-            else:
-                return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
 
     def function_from_key(self, groups, default_name):
         ctype = groups.groups()[0].strip()
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
 
-        function_id = f'{ctype} // @>classname::{name}'
+        function_id = f'{ctype} // @>{KEY_CLASS_NAME}::{name}'
 
         function_args = args
         return function_id, function_args
