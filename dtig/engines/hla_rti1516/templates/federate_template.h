@@ -1,5 +1,5 @@
-@imports
-#include "@>ambassador_header"
+// @imports
+#include "// @>ambassador_header"
 #include <RTI/RTIambassador.h>
 #include <memory>
 
@@ -12,31 +12,32 @@
 
 #define READY_TO_RUN "ReadyToRun"
 
-@classname
+// @classname
 HLAFederate
 
-@constructor
+// @constructor
 HLAFederate();
 
-@destructor
+// @destructor
 virtual ~HLAFederate();
 
-@run
+// @run
 void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port);
 
-@member(public)
-std::shared_ptr<@>ambassador> fedamb;
+// @member(public)
+std::shared_ptr<// @>ambassador> fedamb;
 std::auto_ptr<rti1516::RTIambassador> rtiamb;
 
-@member(private)
+// @member(private)
 uint16_t mPort;
 std::string mName;
 
 int mClient = -1;
+char mBuffer[1024] = {0};
 
-@>callback(member)
+// @>callback(member)
 
-@method(private)
+// @method(private)
 std::wstring convertStringToWstring(const std::string& str);
 rti1516::VariableLengthData toVariableLengthData(const char* s);
 

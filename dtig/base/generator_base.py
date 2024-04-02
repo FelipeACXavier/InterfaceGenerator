@@ -23,6 +23,7 @@ class GeneratorBase():
 
         self.output_file = output_file
 
+        self.comment_char = None
         self.engine_template_file = None
         self.common_template_file = None
 
@@ -117,9 +118,11 @@ class GeneratorBase():
         pass
 
     def parse_template(self, data, name: str, has_argument: bool = False, maximum: int = None) -> VoidResult:
+        if not self.comment_char:
+            return VoidResult.failed("No comment character defined")
+
         # Look for the decorators
-        # Look for anything like @<name>(<args>) or @<name>
-        regex = fr'^@({name}\b)(\(([a-z_]*)\))?'
+        regex = fr'^{self.comment_char}\s*@({name}\b)(\(([a-z_]*)\))?'
         matches = [m for m in re.finditer(regex, data, flags=re.MULTILINE)]
         # Small sanity checks
         if maximum is not None and len(matches) > maximum:
@@ -134,19 +137,19 @@ class GeneratorBase():
             if decorator_name is None or (has_argument and decorator_arg is None):
                 return VoidResult.failed(f'{decorator} a group is missing. Name {decorator_name}, Args {decorator_arg}')
 
-            LOG_DEBUG(f'{decorator}: {decorator_name} {decorator_arg}')
+            LOG_TRACE(f'{decorator}: {decorator_name} {decorator_arg}')
 
             function_start = match.end() + 1
             updated_data = data[function_start:]
 
             # Search for the next decorator
             # @ in the middle of a function are replaced later
-            end = re.search(fr'^@(?!>[^\s])', updated_data, flags=re.MULTILINE)
+            end = re.search(fr'^{self.comment_char}\s*@(?!>[^\s])', updated_data, flags=re.MULTILINE)
             offset = (len(data) - len(updated_data))
-            function_end = len(data) - 1 if end is None else end.end() - 1 + offset
+            function_end = len(data) - 1 if end is None else end.start() - 1 + offset
 
             # Remove trailing whitespaces
-            while data[function_end] == '@' or data[function_end].isspace():
+            while data[function_end] == self.comment_char[0] or data[function_end].isspace():
                 function_end -= 1
 
             body = data[function_start:function_end + 1]
@@ -190,8 +193,7 @@ class GeneratorBase():
 
     def replace_calls(self, contents: str):
         iter_body = contents
-        # Look for anything like @><name>(<args>) or @<name>
-        regex = fr'@>([a-z_]*\b)(\(([a-z_]*)\))?'
+        regex = fr'{self.comment_char}\s*@>([a-z_]*\b)(\(([a-z_]*)\))?'
         while True:
             match = re.search(regex, iter_body)
             if not match:

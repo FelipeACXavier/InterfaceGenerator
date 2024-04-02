@@ -1,4 +1,4 @@
-@imports
+// @imports
 #include <RTI/RTI1516fedTime.h>
 #include <string.h>
 
@@ -7,10 +7,10 @@
 
 using namespace rti1516;
 
-@classname
+// @classname
 HLAAmbassador
 
-@constructor
+// @constructor
 HLAAmbassador()
 {
   // initialize all the variable values
@@ -24,31 +24,31 @@ HLAAmbassador()
   isReadyToRun = false;
 }
 
-@destructor
+// @destructor
 ~HLAAmbassador() throw()
 {
 }
 
-@method
+// @method
 double convertTime(LogicalTime const& theTime)
 {
   RTI1516fedTime castedTime = (RTI1516fedTime)theTime;
   return castedTime.getFedTime();
 }
 
-@method
+// @method
 void synchronizationPointRegistrationSucceeded(std::wstring const& label) throw(FederateInternalError)
 {
   std::wcout << "Successfully registered sync point: " << label << std::endl;
 }
 
-@method
+// @method
 void synchronizationPointRegistrationFailed(std::wstring const& label, SynchronizationFailureReason reason) throw(FederateInternalError)
 {
   std::wcout << "Failed to register sync point: " << label << std::endl;
 }
 
-@method
+// @method
 void announceSynchronizationPoint(std::wstring const& label, VariableLengthData const& theUserSuppliedTag) throw(FederateInternalError)
 {
   std::wcout << "Synchronization point announced: " << label << std::endl;
@@ -58,7 +58,7 @@ void announceSynchronizationPoint(std::wstring const& label, VariableLengthData 
     this->isAnnounced = true;
 }
 
-@method
+// @method
 void federationSynchronized(std::wstring const& label) throw(FederateInternalError)
 {
   std::wcout << "Federation Synchronized: " << label << std::endl;
@@ -67,7 +67,7 @@ void federationSynchronized(std::wstring const& label) throw(FederateInternalErr
     this->isReadyToRun = true;
 }
 
-@method
+// @method
 void timeRegulationEnabled(LogicalTime const& theFederateTime) throw(InvalidLogicalTime,
                                                                                     NoRequestToEnableTimeRegulationWasPending,
                                                                                     FederateInternalError)
@@ -76,7 +76,7 @@ void timeRegulationEnabled(LogicalTime const& theFederateTime) throw(InvalidLogi
   this->federateTime = convertTime(theFederateTime);
 }
 
-@method
+// @method
 void timeConstrainedEnabled(LogicalTime const& theFederateTime) throw(InvalidLogicalTime,
                                                                                      NoRequestToEnableTimeConstrainedWasPending,
                                                                                      FederateInternalError)
@@ -85,7 +85,7 @@ void timeConstrainedEnabled(LogicalTime const& theFederateTime) throw(InvalidLog
   this->federateTime = convertTime(theFederateTime);
 }
 
-@method
+// @method
 void timeAdvanceGrant(LogicalTime const& theTime) throw(InvalidLogicalTime,
                                                         JoinedFederateIsNotInTimeAdvancingState,
                                                         FederateInternalError)
@@ -94,20 +94,16 @@ void timeAdvanceGrant(LogicalTime const& theTime) throw(InvalidLogicalTime,
   this->federateTime = convertTime(theTime);
 }
 
-@method
+// @method
 void discoverObjectInstance(ObjectInstanceHandle theObject,
                             ObjectClassHandle theObjectClass,
                             std::wstring const& theObjectInstanceName) throw(CouldNotDiscover,
                                                                              ObjectClassNotKnown,
                                                                              FederateInternalError)
 {
-  LOG_INFO("Discovered Object: handle= %ls, classHandle=%ls, name=%ls",
-    theObject.toString().c_str(),
-    theObjectClass.toString().c_str(),
-    theObjectInstanceName.c_str());
 }
 
-@method
+// @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -121,7 +117,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-@method
+// @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -136,7 +132,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-@method
+// @method
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -152,7 +148,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-@method
+// @method
 std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& variableLengthData)
 {
   if (!variableLengthData.size())
@@ -161,7 +157,7 @@ std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& vari
                       variableLengthData.size() / sizeof(std::wstring::value_type));
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -175,7 +171,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -190,7 +186,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -206,7 +202,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -223,7 +219,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -241,7 +237,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -260,14 +256,14 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-@method
+// @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
 }
 
-@method
+// @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder,
@@ -276,7 +272,7 @@ void removeObjectInstance(ObjectInstanceHandle theObject,
 {
 }
 
-@method
+// @method
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder,

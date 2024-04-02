@@ -135,8 +135,8 @@ class ClientGeneratorRTI1516():
             f.write(cpp_body)
 
     def generate_model_members(self) -> str:
-        h_body = f'@callback({KEY_MEMBER})\n'
-        cpp_body = f'@callback({KEY_INITIALIZE})\n'
+        h_body = f'// @callback({KEY_MEMBER})\n'
+        cpp_body = f'// @callback({KEY_INITIALIZE})\n'
 
         h, cpp = self.generate_model_parameters()
         h_body += h
@@ -202,10 +202,10 @@ class ClientGeneratorRTI1516():
         if not self.config.has(KEY_INPUTS):
             return h_body, cpp_body
 
-        h_body = f'\n@callback({KEY_SET_INPUT})\n'
+        h_body = f'\n// @callback({KEY_SET_INPUT})\n'
         h_body += "void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues);\n"
 
-        cpp_body = f'\n@callback({KEY_SET_INPUT})\n'
+        cpp_body = f'\n// @callback({KEY_SET_INPUT})\n'
         cpp_body += "void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues)\n{\n"
         cpp_body += "\tdti::MInput inputMessage;\n"
 
@@ -254,10 +254,10 @@ class ClientGeneratorRTI1516():
         if not self.config.has(KEY_OUTPUTS):
             return h_body, cpp_body
 
-        h_body += f'\n@callback({KEY_GET_OUTPUT})\n'
+        h_body += f'\n// @callback({KEY_GET_OUTPUT})\n'
         h_body += f'void GetOutput();\n'
 
-        cpp_body += f'\n@callback({KEY_GET_OUTPUT})\n'
+        cpp_body += f'\n// @callback({KEY_GET_OUTPUT})\n'
         cpp_body += "void GetOutput()\n{\n"
         cpp_body += "\tdti::MOutput outputMessage;\n"
 
@@ -301,10 +301,10 @@ class ClientGeneratorRTI1516():
         if not self.config.has(KEY_PARAMETERS):
             return h_body, cpp_body
 
-        h_body = f'\n@callback({KEY_SET_PARAM})\n'
+        h_body = f'\n// @callback({KEY_SET_PARAM})\n'
         h_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes);\n"
 
-        cpp_body = f'\n@callback({KEY_SET_PARAM})\n'
+        cpp_body = f'\n// @callback({KEY_SET_PARAM})\n'
         cpp_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)\n{\n"
         cpp_body += "\tdti::MParameter paramMessage;\n"
 
@@ -363,10 +363,10 @@ class ClientGeneratorRTI1516():
         if not self.config.has(KEY_OUTPUTS):
             return h_body, cpp_body
 
-        h_body += f'\n@callback({KEY_GET_PARAM})\n'
+        h_body += f'\n// @callback({KEY_GET_PARAM})\n'
         h_body += f'void GetParameter(const ObjectInstanceHandle& handler);\n'
 
-        cpp_body += f'\n@callback({KEY_GET_PARAM})\n'
+        cpp_body += f'\n// @callback({KEY_GET_PARAM})\n'
         cpp_body += "void GetParameter(const ObjectInstanceHandle& handler)\n{\n"
         cpp_body += "\tdti::MParameter paramMessage;\n"
 
@@ -406,7 +406,7 @@ class ClientGeneratorRTI1516():
 
     def generate_model_publications(self) -> str:
         h_body = ""
-        cpp_body = f'\n@callback({KEY_PUBLISH})\n'
+        cpp_body = f'\n// @callback({KEY_PUBLISH})\n'
 
         if self.config.has(KEY_PARAMETERS):
             cpp_body += "\tAttributeHandleSet pubAttributes;\n"
@@ -421,7 +421,7 @@ class ClientGeneratorRTI1516():
 
     def generate_model_subscriptions(self) -> str:
         h_body = ""
-        cpp_body = f'\n@callback({KEY_SUBSCRIBE})\n'
+        cpp_body = f'\n// @callback({KEY_SUBSCRIBE})\n'
 
         if self.config.has(KEY_PARAMETERS):
             cpp_body += "\tAttributeHandleSet subAttributes;\n"

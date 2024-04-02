@@ -6,6 +6,6 @@ import "protobuf/utils.proto";
 
 message MStep {
     // Any is used since different engines use different data types
-    MNumber32 step        = 1;
-    MNumber32 micro_step  = 2;
+    MNumber64 step        = 1;
+    MNumber64 micro_step  = 2;
 }

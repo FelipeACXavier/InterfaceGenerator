@@ -1,4 +1,4 @@
-@imports
+# @imports
 # Basic imports
 import sys
 import socket
@@ -27,10 +27,10 @@ from google.protobuf import any_pb2
 from google.protobuf.message import Message
 from google.protobuf.message import DecodeError
 
-@classname
+# @classname
 FMI2Wrapper
 
-@constructor
+# @constructor
 def __init__(self):
     self.state: State = State.UNINITIALIZED
     self.server: socket.socket = None
@@ -41,12 +41,12 @@ def __init__(self):
     self.server_thread = threading.Thread(target=self.run_server)
     self.model_thread = threading.Thread(target=self.run_model)
 
-@destructor
+# @destructor
 def __del__(self):
     if self.server is not None:
         self.server.close()
 
-@run
+# @run
 def run(self) -> None:
     if not self.create_connection():
         return
@@ -57,29 +57,29 @@ def run(self) -> None:
     self.server_thread.join()
     self.model_thread.join()
 
-@parse(initialize)
+# @parse(initialize)
 def parse_initialize(message) -> Message:
     if self.state != State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
 
-    ret = @>callback(initialize)
+    ret = # @>callback(initialize)
     if ret.code != dti_code.SUCCESS:
         return ret
 
     self.state = State.INITIALIZING
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@parse(start)
+# @parse(start)
 def parse_start(message) -> Message:
     # If the model was not yet initialized, we cannot start
     if self.state == State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot start in state {self.state.name}')
 
-    return @>callback(start)(message)
+    return # @>callback(start)(message)
 
-@parse(stop)
+# @parse(stop)
 def parse_stop(message) -> Message:
-    ret = @>callback(stop)(message)
+    ret = # @>callback(stop)(message)
     if ret.code != dti_code.SUCCESS:
         return ret
 
@@ -87,7 +87,7 @@ def parse_stop(message) -> Message:
     self.state = State.STOPPED
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@parse(setinput)
+# @parse(setinput)
 def parse_set_input(message) -> Message:
     # If the model was not yet initialized, we cannot set inputs
     if self.state == State.UNINITIALIZED:
@@ -105,7 +105,7 @@ def parse_set_input(message) -> Message:
 
             fval = dti_utils.MF32()
             if value.Unpack(fval):
-                return @>callback(setinput)(identifier, fval.value)
+                return # @>callback(setinput)(identifier, fval.value)
             else:
                 return self.return_code(dti_code.INVALID_OPTION, 'Non-float values not yet supported')
 
@@ -114,28 +114,27 @@ def parse_set_input(message) -> Message:
 
     elif message.identifiers.HasField("ids"):
         n_inputs = len(message.identifiers.ids.ids)
-        return @>callback(setinput)(identifier, fval.value)
+        return # @>callback(setinput)(identifier, fval.value)
         return self.return_code(dti_code.UNKNOWN_OPTION, 'Non-string ids not implemented')
     else:
         return self.return_code(dti_code.INVALID_OPTION, 'No identifiers provided')
 
     return self.return_code(dti_code.SUCCESS)
 
-@parse(getoutput)
+# @parse(getoutput)
 def parse_get_output(message) -> Message:
     if self.state == State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot get output in state {self.state.name}')
 
     if message.identifiers.HasField("names"):
         n_outputs = len(message.identifiers.names.names)
-        values = @>callback(getoutput)(message.identifiers.names.names)
+        values = # @>callback(getoutput)(message.identifiers.names.names)
         if len(values) != n_outputs:
             return self.return_code(dti_code.FAILURE, 'Failed to get all outputs')
 
         return_value = dti_return.MReturnValue(code=dti_code.SUCCESS)
         for i in range(n_outputs):
-            return_value.values.identifiers.names.names.append(
-                message.identifiers.names.names[i])
+            return_value.values.identifiers.names.names.append(message.identifiers.names.names[i])
 
             # Set the output value
             value = dti_utils.MF32()
@@ -154,33 +153,33 @@ def parse_get_output(message) -> Message:
 
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@parse(advance)
+# @parse(advance)
 def parse_advance(message) -> Message:
     if self.state != State.STEPPING:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot advance in state {self.state.name}')
 
-    return @>callback(advance)(message)
+    return # @>callback(advance)(message)
 
-@parse(initialize)
+# @parse(initialize)
 def parse_initialize(message) -> Message:
     if self.state != State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
 
-    ret = @>callback(initialize)(message)
+    ret = # @>callback(initialize)(message)
     if ret.code != dti_code.SUCCESS:
         return ret
 
     self.state = State.INITIALIZING
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@parse(modelinfo)
+# @parse(modelinfo)
 def parse_model_info() -> Message:
     if self.state == State.UNINITIALIZED:
         return self.return_code(dti_code.INVALID_STATE, f'Cannot get model info in state {self.state.name}')
 
-    return @>callback(modelinfo)()
+    return # @>callback(modelinfo)()
 
-@messagehandler
+# @messagehandler
 def parse_message(self, data : str) -> Message:
     message = dti_message.MDTMessage()
     try:
@@ -189,32 +188,31 @@ def parse_message(self, data : str) -> Message:
         print('Failed to parse incoming message')
         return bytes()
 
-    # print(f"Received message: {message}")
     if message.HasField("stop"):
-        return @>parse(stop)(message.stop)
+        return # @>parse(stop)(message.stop)
     elif message.HasField("start"):
-        return @>parse(start)(message.start)
+        return # @>parse(start)(message.start)
     elif message.HasField("input"):
-        return @>parse(setinput)(message.input.inputs)
+        return # @>parse(setinput)(message.input.inputs)
     elif message.HasField("output"):
-        return @>parse(getoutput)(message.output.outputs)
+        return # @>parse(getoutput)(message.output.outputs)
     elif message.HasField("advance"):
-        return @>parse(advance)(message.advance)
+        return # @>parse(advance)(message.advance)
     elif message.HasField("initialize"):
-        return @>parse(initialize)(message.initialize)
+        return # @>parse(initialize)(message.initialize)
     else:
-        return @>parse(modelinfo)()
+        return # @>parse(modelinfo)()
 
     return dti_return.MReturnValue(code=dti_code.UNKNOWN_COMMAND)
 
-@method
+# @method
 def return_code(self, code: dti_code, message: str = None) -> dti_return:
     if message is None:
         return dti_return.MReturnValue(code=code)
 
     return dti_return.MReturnValue(code=code, error_message=dti_utils.MString(value=message))
 
-@method
+# @method
 def create_connection(self) -> bool:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -229,7 +227,7 @@ def create_connection(self) -> bool:
         print(f'Failed to create socket: {e}')
         return False
 
-@runserver
+# @runserver
 def run_server(self) -> None:
     sock, addr = self.server.accept()
     with sock:
@@ -244,16 +242,16 @@ def run_server(self) -> None:
 
                 # Parse client command
                 with self.condition:
-                    reply: bytes = @>messagehandler(data).SerializeToString()
+                    reply: bytes = # @>messagehandler(data).SerializeToString()
                     # Is this always desired
                     # On step, we wait until the step is complete before replying
                     if not self.step:
                         sock.sendall(reply)
                         self.condition.notify_all()
                     else:
-                        self.condition.wait_for(lambda: self.step)
-                        sock.sendall(reply)
                         self.condition.notify_all()
+                        self.condition.wait_for(lambda: not self.step or self.state == State.STOPPED)
+                        sock.sendall(reply)
 
                     if self.state == State.STOPPED:
                         break
@@ -268,14 +266,14 @@ def run_server(self) -> None:
             self.state = State.STOPPED
             self.condition.notify_all()
 
-@method
+# @method
 def parse_and_assign_optional(self, message, name):
     if message.HasField(name):
         return self.parse_number(getattr(message, name))
 
     return None
 
-@method
+# @method
 def parse_number(self, message):
     fields = message.ListFields()
     if len(fields) != 1:
@@ -295,17 +293,17 @@ def parse_number(self, message):
 
     return None
 
-@main
+# @main
 if __name__ == "__main__":
     if len(sys.argv) > 0:
         PORT = int(sys.argv[1])
 
     print(f'Running with port: {PORT}')
 
-    wrapper = @>classname()
+    wrapper = # @>classname()
     wrapper.run()
 
-@states
+# @states
 HOST = "127.0.0.1"
 PORT = 8080
 

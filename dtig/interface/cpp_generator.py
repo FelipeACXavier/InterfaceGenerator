@@ -12,7 +12,7 @@ from dtig.common.model_configuration_base import ModelConfigurationBase
 
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
-cpp_function_regex=fr'^([A-Za-z_:1-9\s<>]*?)([@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
+cpp_function_regex=fr'^([A-Za-z_:1-9\s<>]*?)([\/@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
 
 class HppGenerator(GeneratorBase):
     def __init__(self, output_file):
@@ -23,6 +23,7 @@ class HppGenerator(GeneratorBase):
 
         # First groups must be the function name and the second group should be the arguments
         self.function_regex = cpp_function_regex
+        self.comment_char = fr'\/\/'
 
     def read_templates(self) -> VoidResult:
         if self.common_template_file is None:
@@ -280,6 +281,7 @@ class HppGenerator(GeneratorBase):
         args = groups[1]
         callback = groups[2]
 
+        LOG_INFO(f'Replacing: {groups}')
         if callback:
             if self.is_valid_key(callback):
                 if self.callbacks[name][callback][KEY_NAME]:
@@ -317,6 +319,7 @@ class CppGenerator(GeneratorBase):
 
         # First groups must be the function name and the second group should be the arguments
         self.function_regex = cpp_function_regex
+        self.comment_char = fr'\/\/'
 
     def read_templates(self) -> VoidResult:
         if not self.common_template_file:
@@ -398,7 +401,6 @@ class CppGenerator(GeneratorBase):
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read method: {result}')
 
-        print(json.dumps(self.callbacks, indent=2))
         return VoidResult()
 
     def generate(self, config: ModelConfigurationBase) -> VoidResult:
@@ -514,7 +516,6 @@ class CppGenerator(GeneratorBase):
         args = groups[1]
         callback = groups[2]
 
-        LOG_INFO(f'Groups: {groups}')
         if callback:
             if self.is_valid_key(callback):
                 if self.callbacks[name][callback][KEY_NAME]:
@@ -534,7 +535,7 @@ class CppGenerator(GeneratorBase):
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
 
-        function_id = f'{ctype} @>classname::{name}'
+        function_id = f'{ctype} // @>classname::{name}'
 
         function_args = args
         return function_id, function_args

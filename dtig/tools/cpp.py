@@ -11,8 +11,6 @@ def read_file(file : str) -> str:
             # Ignore comments
             l_line = len(line.lstrip())
             first_character = len(line) - l_line
-            if l_line > 0 and line[first_character] == "/":
-                continue
 
             # Use spaces instead of tabs
             data += line.replace("\t", DEFAULT_INDENTATION)

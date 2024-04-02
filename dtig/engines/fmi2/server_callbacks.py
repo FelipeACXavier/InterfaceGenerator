@@ -1,4 +1,4 @@
-@callback(imports)
+# @callback(imports)
 from fmpy import read_model_description, extract
 from fmpy.fmi2 import FMU2Slave
 from fmpy.util import plot_result
@@ -6,7 +6,7 @@ from fmpy.util import plot_result
 import shutil
 import numpy as np
 
-@callback(constructor)
+# @callback(constructor)
 # Engine specific members
 self.step       : bool   = False
 
@@ -19,7 +19,7 @@ self.model_name = None
 self.value_references = {}
 
 
-@callback(initialize)
+# @callback(initialize)
 def parse_initialize(message) -> Message:
     self.model_name = self.parse_and_assign_optional(message, "model_name")
     if self.model_name is None:
@@ -27,7 +27,7 @@ def parse_initialize(message) -> Message:
 
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@callback(advance)
+# @callback(advance)
 def parse_advance(self, message) -> Message:
     if message.HasField("step_size"):
         step_size = self.parse_number(message.step_size.step)
@@ -39,12 +39,12 @@ def parse_advance(self, message) -> Message:
     self.step = True
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@callback(setinput)
+# @callback(setinput)
 def parse_input(reference, value):
     self.fmu.setReal([self.value_references[reference]], [value])
     return self.return_code(dti_code.SUCCESS)
 
-@callback(getoutput)
+# @callback(getoutput)
 def parse_output(incoming_references) -> Message:
     n_outputs = len(incoming_references)
     references = [self.value_references[ref] for ref in incoming_references]
@@ -55,14 +55,14 @@ def parse_output(incoming_references) -> Message:
 
     return values
 
-@callback(stop)
+# @callback(stop)
 def parse_stop(message) -> Message:
     print(f'Stopping with: {message.mode}')
     self.step = True
     self.state = State.STOPPED
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@callback(start)
+# @callback(start)
 def parse_start(message) -> Message:
     self.start_time = self.parse_and_assign_optional(message, "start_time")
     if self.start_time is None:
@@ -87,12 +87,11 @@ def parse_start(message) -> Message:
     else:
         return self.return_code(dti_code.INVALID_OPTION, f'Unknown run mode: {message.run_mode}')
 
-    self.step = True
     print(f'Starting with: {dti_run_mode.ERunMode.Name(message.run_mode)}.\nRunning from {self.start_time:0.4f} to {self.stop_time:0.4f} with {self.step_size:0.4f}')
 
     return dti_return.MReturnValue(code=dti_code.SUCCESS)
 
-@callback(modelinfo)
+# @callback(modelinfo)
 def parse_model_info() -> Message:
     if not self.model_name:
         return self.return_code(dti_code.FAILURE, f'Model is not yet known')
@@ -110,7 +109,7 @@ def parse_model_info() -> Message:
 
     return return_value
 
-@method
+# @method
 def variable_to_info(variable):
     info = dti_info.MInfo()
     if variable.valueReference:
@@ -127,7 +126,7 @@ def variable_to_info(variable):
 
     return info
 
-@callback(run)
+# @callback(run)
 def run_model() -> None:
     with self.condition:
         self.condition.wait_for(lambda: self.state == State.INITIALIZING or self.state == State.STOPPED)
@@ -195,6 +194,7 @@ def run_model() -> None:
         # convert the results to a structured NumPy array
         result = np.array(rows, dtype=np.dtype([(k, np.float64) for k in self.value_references.keys()]))
         plot_result(result)
+
 
     with self.condition:
         self.condition.wait_for(lambda: self.state == State.STOPPED)

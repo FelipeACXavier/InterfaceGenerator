@@ -23,6 +23,7 @@ class ServerGenerator(GeneratorBase):
         self.function_definition = lambda name, args: f'def {name}({args}):'
 
         # First groups must be the function name and the second group should be the arguments
+        self.comment_char = fr'#'
         self.function_regex = fr'def(.*)\((.*)\).*:'
 
     def read_templates(self) -> VoidResult:
@@ -111,7 +112,6 @@ class ServerGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read method: {result}')
 
-        # print(json.dumps(self.callbacks, indent=2))
         return VoidResult()
 
     def generate(self, config: ModelConfigurationBase) -> VoidResult:

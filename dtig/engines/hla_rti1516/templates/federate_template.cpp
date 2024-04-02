@@ -1,4 +1,4 @@
-@imports
+// @imports
 #include <RTI/LogicalTimeInterval.h>
 #include <RTI/RTI1516fedTime.h>
 #include <RTI/RTIambassador.h>
@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-#include "@>ambassador_header"
+#include "// @>ambassador_header"
 
 #include "protobuf/dt_message.pb.h"
 #include "protobuf/initialize.pb.h"
@@ -28,24 +28,24 @@
 using namespace std;
 using namespace rti1516;
 
-static const float STEP = 0.05;
+static const double STEP = 0.01;
 
-@classname
+// @classname
 HLAFederate
 
-@constructor
+// @constructor
 HLAFederate()
 {
 }
 
-@destructor
+// @destructor
 ~HLAFederate()
 {
   if (mClient >= 0)
     close(mClient);
 }
 
-@method
+// @method
 std::wstring convertStringToWstring(const std::string& str)
 {
   const std::ctype<wchar_t>& CType = std::use_facet<std::ctype<wchar_t> >(std::locale());
@@ -54,7 +54,7 @@ std::wstring convertStringToWstring(const std::string& str)
   return std::wstring(&wideStringBuffer[0], wideStringBuffer.size());
 }
 
-@run
+// @run
 void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port)
 {
   ///
@@ -91,7 +91,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   /// 3. join the federation
   /////////////////////////////
   /// create the federate ambassador and join the federation
-  fedamb = std::make_shared<@>ambassador>();
+  fedamb = std::make_shared<// @>ambassador>();
 
   mName = federateName;
 
@@ -218,14 +218,14 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   // send an interaction.
   while (true)
   {
+    sendInteraction();
+
     auto ret = SendMessage(aMessage);
     if (ret.code() == dti::ReturnCode::INVALID_STATE)
     {
       std::cout << "Stopped" << std::endl;
       break;
     }
-
-    sendInteraction();
 
     advanceTime(STEP);
     std::cout << "Time Advanced to " << fedamb->federateTime << std::endl;
@@ -273,12 +273,12 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   }
 }
 
-@method
+// @method
 void initializeHandles()
 {
   try
   {
-    @>callback(initialize)
+    // @>callback(initialize)
   }
   catch (NameNotFound error)
   {
@@ -286,14 +286,14 @@ void initializeHandles()
   }
 }
 
-@method
+// @method
 void waitForUser()
 {
   std::cout << " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" << std::endl;
   (void)getchar();
 }
 
-@method
+// @method
 void enableTimePolicy()
 {
   /////////////////////////////
@@ -320,46 +320,46 @@ void enableTimePolicy()
   }
 }
 
-@method
+// @method
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
-    @>callback(setparameter)(theObject, theAttributeValues);
+    // @>callback(setparameter)(theObject, theAttributeValues);
   };
 
   fedamb->interactionReceived = [this](rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues) {
-    @>callback(setinput)(theInteraction, theParameterValues);
+    // @>callback(setinput)(theInteraction, theParameterValues);
   };
 
-  @>callback(subscribe)
-  @>callback(publish)
+  // @>callback(subscribe)
+  // @>callback(publish)
 }
 
-@method
+// @method
 ObjectInstanceHandle registerObject()
 {
   return rtiamb->registerObjectInstance(rtiamb->getObjectClassHandle(L"ObjectRoot.Parameters"));
 }
 
-@method
+// @method
 rti1516::VariableLengthData toVariableLengthData(const char* s)
 {
   return toData(s);
 }
 
-@method
+// @method
 void updateAttributeValues(ObjectInstanceHandle objectHandle)
 {
-  @>callback(getparameter)(objectHandle);
+  // @>callback(getparameter)(objectHandle);
 }
 
-@method
+// @method
 void sendInteraction()
 {
-  @>callback(getoutput)();
+  // @>callback(getoutput)();
 }
 
-@method
+// @method
 void advanceTime(double timestep)
 {
   /// request the advance
@@ -375,19 +375,19 @@ void advanceTime(double timestep)
   }
 }
 
-@method
+// @method
 void deleteObject(ObjectInstanceHandle objectHandle)
 {
   rtiamb->deleteObjectInstance(objectHandle, toVariableLengthData(""));
 }
 
-@method
+// @method
 double getLbts()
 {
   return (fedamb->federateTime + fedamb->federateLookahead);
 }
 
-@method
+// @method
 dti::MReturnValue SendMessage(const google::protobuf::Message& message)
 {
   dti::MReturnValue result;
@@ -395,16 +395,15 @@ dti::MReturnValue SendMessage(const google::protobuf::Message& message)
   auto toSend = message.SerializeAsString();
   send(mClient, toSend.c_str(), toSend.size(), 0);
 
-  char buffer[MSG_SIZE] = {0};
-  if (read(mClient, buffer, MSG_SIZE - 1) <= 0)
+  auto bytesRead = read(mClient, mBuffer, MSG_SIZE - 1);
+  if (bytesRead <= 0)
   {
     result.set_code(dti::ReturnCode::INVALID_STATE);
     result.mutable_error_message()->set_value("Server disconnected");
     return result;
   }
 
-  std::string s(buffer);
-  if (!result.ParseFromString(s))
+  if (!result.ParseFromArray(mBuffer, bytesRead))
   {
     result.set_code(dti::ReturnCode::FAILURE);
     result.mutable_error_message()->set_value("Failed to parse response");
@@ -414,7 +413,7 @@ dti::MReturnValue SendMessage(const google::protobuf::Message& message)
   return result;
 }
 
-@main
+// @main
 #include <chrono>
 #include <cstring>
 #include <thread>
@@ -461,10 +460,10 @@ int main(int argc, char *argv[])
 
   if (childPid == 0)
   {
-    char* args[] = {"@>server_cmd", "@>server_path", port, NULL};
+    char* args[] = {"// @>server_cmd", "// @>server_path", port, NULL};
 
     // Start server
-    if (execvp("@>server_cmd", args) < 0)
+    if (execvp("// @>server_cmd", args) < 0)
     {
       std::cout << "Failed to start server" << std::endl;
       return -1;
@@ -481,8 +480,8 @@ int main(int argc, char *argv[])
         rtiAddress = "127.0.0.1";
 
       // create and run the federate
-      auto federate = std::make_shared<@>classname>();
-      federate->@>run(federateName, fomPath, rtiAddress, std::stoi(port));
+      auto federate = std::make_shared<// @>classname>();
+      federate->// @>run(federateName, fomPath, rtiAddress, std::stoi(port));
 
       waitpid(childPid, 0, 0);
     }
