@@ -1,0 +1,66 @@
+{
+  "name": "BouncingBall",
+  "description": "A bouncing ball model",
+  "authors": "Author's name",
+  "version": "1.0.0",
+  "formalism": "continuous",
+  "client": "hla_rti1516",
+  "server": "fmi2",
+  "step": 1000,
+  "minimumstep": 100,
+  "lookahead": 5000,
+  "superdensetime": false,
+  "inputs": [
+    {
+      "id": 3,
+      "name": "h",
+      "description": "Height of the ball",
+      "type": "float",
+      "unit": "m",
+      "namespace": "InteractionRoot.Inputs"
+    },
+    {
+      "id": 4,
+      "name": "v",
+      "description": "Velocity of the ball",
+      "type": "float",
+      "unit": "m/s",
+      "namespace": "InteractionRoot.Inputs"
+    }
+  ],
+  "outputs": [
+    {
+      "id": 0,
+      "name": "h",
+      "description": "Height of the ball",
+      "type": "float",
+      "unit": "m",
+      "namespace": "InteractionRoot.Outputs"
+    },
+    {
+      "id": 1,
+      "name": "v",
+      "description": "Velocity of the ball",
+      "type": "float",
+      "unit": "m/s",
+      "namespace": "InteractionRoot.Outputs"
+    }
+  ],
+  "parameters": [
+    {
+      "id": 0,
+      "name": "g",
+      "description": "Gravity",
+      "type": "float",
+      "unit": "m/s^2",
+      "namespace": "ObjectRoot.Parameters"
+    },
+    {
+      "id": 1,
+      "name": "e",
+      "description": "Coefficient of restitution",
+      "type": "float",
+      "namespace": "ObjectRoot.Parameters"
+    }
+  ]
+}

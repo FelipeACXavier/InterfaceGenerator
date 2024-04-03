@@ -4,7 +4,7 @@
   "authors": "Author's name",
   "version": "1.0.0",
   "formalism": "continuous",
-  "target": "fmi2",
+  "server": "fmi2",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
