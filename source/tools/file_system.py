@@ -72,8 +72,14 @@ def run_command(command, tail=True):
 
     return VoidResult()
 
-def create_dir(out_dir):
+def create_dir(dir_name):
     try:
-        os.makedirs(out_dir)
+        os.makedirs(dir_name)
     except FileExistsError as e:
         pass
+
+def exists(file_name):
+    return os.path.exists(file_name)
+
+def is_directory_empty(dir_name):
+    return not os.path.isdir(dir_name) or not os.listdir(dir_name)

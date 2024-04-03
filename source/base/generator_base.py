@@ -196,13 +196,15 @@ class GeneratorBase():
                         or key == KEY_PRIVATE or key == KEY_PUBLIC)
 
     def generate_imports(self) -> Result:
-        if self.callbacks[KEY_IMPORTS][KEY_BODY] and not self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
-            return Result(self.callbacks[KEY_IMPORTS][KEY_BODY])
-        elif self.callbacks[KEY_IMPORTS][KEY_BODY] and self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
-            return Result(self.callbacks[KEY_IMPORTS][KEY_BODY] \
-                          + self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY])
-        else:
-            return Result("")
+        body = ""
+        if self.callbacks[KEY_IMPORTS][KEY_BODY]:
+            body += self.callbacks[KEY_IMPORTS][KEY_BODY]
+
+        if self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]
+
+
+        return Result(body + "\n")
 
     def generate_states(self) -> Result:
         if self.callbacks[KEY_STATES][KEY_BODY]:

@@ -20,8 +20,8 @@ class ServerGenerator(GeneratorBase):
         # Set the function definition
         self.function_definition = lambda name, args: f'function {name}({args})'
 
-        # First groups must be the function name and the second group should be the arguments
-        self.function_regex = fr'^function ([\/@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
+        # First group is the return, the second is the function name and the third should be the arguments
+        self.function_regex = fr'^function\s*([\w\d\[\]]*)?.*(?<=\s)([\w\d]*)\((.*)\)'
         self.comment_char = fr'%'
 
     def read_templates(self) -> VoidResult:
@@ -119,14 +119,14 @@ class ServerGenerator(GeneratorBase):
             return creation
         file_contents += creation.value()
 
-        # Generate states
-        creation = self.generate_states()
+        # Generate class
+        creation = self.generate_class()
         if not creation.is_success():
             return creation
         file_contents += creation.value()
 
-        # Generate class
-        creation = self.generate_class()
+        # Generate main
+        creation = self.generate_main()
         if not creation.is_success():
             return creation
         file_contents += creation.value()
@@ -155,16 +155,21 @@ class ServerGenerator(GeneratorBase):
             return creation
         file_contents += creation.value()
 
-        # Generate main
-        creation = self.generate_main()
-        if not creation.is_success():
-            return creation
-        file_contents += creation.value()
-
         file_contents = self.replace_calls(file_contents)
 
         with open(self.output_file, "w") as file:
             file.write(file_contents)
+
+        # Generate states
+        if self.callbacks[KEY_STATES]:
+            # States must be in their own separate file
+            creation = self.generate_states()
+            if not creation.is_success():
+                return creation
+
+            state_file = os.path.dirname(self.output_file) + "/State.m"
+            with open(state_file, "w") as file:
+                file.write(creation.value())
 
         return VoidResult()
 
@@ -174,27 +179,13 @@ class ServerGenerator(GeneratorBase):
 
         return Result("")
 
-    def name_from_key(self, groups):
-        name = groups[0]
-        args = groups[1]
-        callback = groups[2]
-
-        if callback:
-            if self.is_valid_callback(callback):
-                return f'self.{self.callbacks[name][callback][KEY_NAME]}'
-            else:
-                return f'self.{self.callbacks[name][KEY_NAME]}{args}'
-        else:
-            if name in self.callbacks:
-                return f'{self.callbacks[name][KEY_NAME]}{args if args else ""}'
-            else:
-                return f'{self.callbacks[KEY_NEW][name][KEY_NAME]}{args if args else ""}'
-
     def function_from_key(self, groups, default_name):
-        function_id = groups[1].strip() if default_name is None else default_name
+        groups = groups.groups()
+        return_value = groups[0].strip() if len(groups[0]) else None
+        function_name = groups[1].strip() if default_name is None else default_name
         function_args = groups[2].strip()
 
-        if KEY_SELF not in function_args:
-            function_args = ("self, " + function_args).strip().rstrip(",")
+        if return_value:
+            function_name = f'{return_value} = {function_name}'
 
-        return function_id, function_args
+        return function_name, function_args

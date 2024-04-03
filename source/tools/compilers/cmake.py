@@ -8,18 +8,27 @@ from base.compiler_base import CompilerBase
 class CMakeCompiler(CompilerBase):
     def __init__(self, output_file):
         super().__init__(os.path.dirname(output_file) + "/CMakeLists.txt")
+        self.set_compiler("cmake")
 
     def compile(self, options = []) -> VoidResult:
         base_dir = os.path.dirname(self.output_file)
         build_dir = base_dir + "/build"
         install_dir = base_dir + "/install"
 
-        create_dir(build_dir)
+        LOG_DEBUG(f'Compiling to folder: {build_dir}')
 
-        cmake_cmd = f'cmake -DCMAKE_INSTALL_PREFIX={install_dir} .. && make -j4'
+        cmake_cmd = f'{self.compiler} -DCMAKE_INSTALL_PREFIX={install_dir} .. && make -j4'
         for opt in options:
             if "install" in opt:
+                if not is_directory_empty(install_dir):
+                    LOG_INFO("Already installed")
+                    return VoidResult()
+
+                LOG_DEBUG(f'Installing to folder: {install_dir}')
                 cmake_cmd += "&& make install"
+
+        create_dir(build_dir)
+        create_dir(install_dir)
 
         cd_cmd = f'cd {build_dir}'
         built = run_command(f'{cd_cmd} && {cmake_cmd}')
@@ -80,3 +89,5 @@ class CMakeCompiler(CompilerBase):
 
         return VoidResult()
 
+    def install(self, version, installation_dir=None) -> VoidResult:
+        return VoidResult()

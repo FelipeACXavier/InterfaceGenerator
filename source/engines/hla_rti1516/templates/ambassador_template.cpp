@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <iostream>
-#include "logging.h"
 
 using namespace rti1516;
 

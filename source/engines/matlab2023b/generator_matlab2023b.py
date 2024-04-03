@@ -8,7 +8,7 @@ from interface.matlab_generator import ServerGenerator
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
 
-class ServerGeneratorSimulink2023b():
+class ServerGeneratorMatlab2023b():
   def __init__(self, output_file):
     self.output_file = output_file + "_server.m"
 

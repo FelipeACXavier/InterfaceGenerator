@@ -6,9 +6,15 @@ clc;
 javaaddpath('./');
 javaaddpath('./build');
 
+% import states
+import State.*;
+
 % Define global variables
 global step;
 global state;
+
+step = false;
+state = State.UNINITIALIZED;
 
 % @states
 classdef State
@@ -56,7 +62,7 @@ function readByteFcn(src, ~)
   % Read data and process it as a protobuf object
   data = read(src, src.NumBytesAvailable);
   message = dti.ProtoWrapper.parseFrom(data);
-  returnValue = % @>messagehandler(message)
+  returnValue = % @>messagehandler(message);
 
   % Send the reply
   write(src, returnValue.toByteArray(b));
@@ -93,12 +99,12 @@ end
 % @parse(initialize)
 function returnValue = parse_initialize(message)
   global state;
-  returnValue = % @>callback(initialize)();
-  if (returnValue.getCode() ~= dtig_code.SUCCESS)
+  returnValue = % @>callback(initialize)(message);
+  if (returnValue.getCode() ~= dtig.EReturnCode.SUCCESS)
     return;
   end
 
-  state = State.INITIALIZING
+  state = State.INITIALIZING;
 end
 
 % @parse(start)
@@ -106,7 +112,7 @@ function returnValue = parse_start(message)
   global state;
   % If the model was not yet initialized, we cannot start
   if (state == State.UNINITIALIZED)
-    returnValue = createReturn(dtig_code.INVALID_STATE, "Cannot start while UNINITIALIZED");
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot start while UNINITIALIZED");
     return;
   end
 
@@ -118,44 +124,43 @@ function returnValue = parse_stop(message)
   global step;
   global state;
   returnValue = % @>callback(stop)(message);
-  if (returnValue.getCode() ~= dtig_code.SUCCESS)
+  if (returnValue.getCode() ~= dtig.EReturnCode.SUCCESS)
     return;
   end
 
   step = True;
   state = State.STOPPED;
-  returnValue = createReturn(dtig_code.SUCCESS)
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
 
 % @parse(setinput)
 function returnValue = parse_set_input(message)
   global state;
   if (state == State.UNINITIALIZED)
-    returnValue = createReturn(dtig_code.INVALID_STATE, "Cannot set input while UNINITIALIZED");
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot set input while UNINITIALIZED");
     return
   end
 
-  returnValue = createReturn(dtig_code.SUCCESS)
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
   if (message.getIdentifiers().HasField("names"))
-    n_inputs = length(message.getIdentifiers().getNames().getNames())
+    n_inputs = message.getIdentifiers().getNames().getNames().size();
     for i = 1:n_inputs
       identifier = message.getIdentifiers().getNames().getNames(i);
-      value = message.getValues(i);
-      fval = value.Unpack(fval);
-      if fval
-        returnValue = % @>callback(setinput)(identifier, fval.value);
-        if returnValue.getCode() ~= dtig_code.SUCCESS
+      value = dtig.Helpers.unpack(message.getValues(i));
+      if value
+        returnValue = % @>callback(setinput)(identifier, value.getValue());
+        if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
           return;
         end
       else
-        returnValue = createReturn(dtig_code.INVALID_OPTION, 'Non-float values not yet supported');
+        returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, 'Could not unpack value');
         return;
       end
     end
-  elseif message.identifiers.HasField("ids")
-    returnValue = createReturn(dtig_code.UNKNOWN_OPTION, 'Non-string ids not implemented')
+  elseif message.getIdentifiers().HasField("ids")
+    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, 'Non-string ids not implemented');
   else
-    returnValue = createReturn(dtig_code.INVALID_OPTION, "No identifiers provided");
+    returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, "No identifiers provided");
   end
 end
 
@@ -163,34 +168,41 @@ end
 function returnValue = parse_get_output(message)
   global state;
   if (state == State.UNINITIALIZED)
-    returnValue = createReturn(dtig_code.INVALID_STATE, "Cannot get output while UNINITIALIZED");
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get output while UNINITIALIZED");
     return;
   end
 
-  returnValue = createReturn(dtig_code.SUCCESS);
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
   if (message.getIdentifiers().HasField("names"))
     names = message.getIdentifiers().getNames().getNames();
-    n_outputs = lenght(names);
+    n_outputs = names.size();
     values = % @>callback(getoutput)(names);
-    if length(values) ~= n_outputs
-      returnValue = createReturn(dtig_code.FAILURE, 'Failed to get all outputs');
+    if values.size() ~= n_outputs
+      returnValue = createReturn(dtig.EReturnCode.FAILURE, 'Failed to get all outputs');
       return
     end
 
-    returnValue = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    outputs = dtig.MValues.newBuilder();
+    names = dtig.MNames.newBuilder();
     for i = 1:n_outputs
-      returnValue.values.identifiers.names.names.append(names[i])
+      names.addNames(names.get(i));
 
       %  Set the output value
-      value = dti.MF32.newBuilder();
-      value.setValue(values[i])
-      s = dti.MyProto.pack(value);
-      return_value.getValues().getValues().Append(any_msg);
+      outputs.addValues(com.google.protobuf.Any...
+        .pack(dtig.MF32.newBuilder()...
+          .setValue(values.get(i)).build()));
     end
-  elseif message.identifiers.HasField("ids")
-    returnValue = createReturn(dtig_code.UNKNOWN_OPTION, 'Non-string ids not implemented');
+
+    outputs.setIdentifiers(...
+      dtig.MIdentifiers.newBuilder()...
+        .setNames(names));
+
+    returnValue.setValues(outputs.build());
+
+  elseif message.getIdentifiers().HasField("ids")
+    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, 'Non-string ids not implemented');
   else
-    returnValue = createReturn(dtig_code.INVALID_OPTION, 'No identifiers provided');
+    returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, 'No identifiers provided');
   end
 end
 
@@ -198,18 +210,18 @@ end
 function returnValue = parse_advance(message)
   global state;
   if (state ~= State.STEPPING)
-    returnValue = createReturn(dtig_code.INVALID_STATE, 'Cannot advance, not in STEPPING state');
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, 'Cannot advance, not in STEPPING state');
     return;
   end
 
-  createReturn = % @>callback(advance)(message);
+  returnValue = % @>callback(advance)(message);
 end
 
 % @parse(modelinfo)
 function returnValue = parse_model_info()
   global state;
   if (state == State.UNINITIALIZED)
-    returnValue = createReturn(dtig_code.INVALID_STATE, "Cannot get model info while UNINITIALIZED");
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get model info while UNINITIALIZED");
     return;
   end
 

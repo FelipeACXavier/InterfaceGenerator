@@ -11,6 +11,7 @@ BIN_DIR = ENV_DIR + "bin/"
 INCLUDE_DIR = ENV_DIR + "include/"
 LIB_DIR = ENV_DIR + "lib"
 
+PROTOBUF_VERSION="3.20.3"
 PROTOC = BIN_DIR + "protoc"
 PROTOBUF_DIR = ROOT_DIR + "protobuf/"
 PROTOBUF_DTIG_DIR = PROTOBUF_DIR + "dtig"
@@ -42,6 +43,16 @@ def generate_cpp(out_dir : str):
 
 @protobuf_generator
 def generate_java(out_dir : str):
+    # Check if library is available
+    jar_file = f'protobuf-java-{PROTOBUF_VERSION}.jar'
+    url = f'https://repo1.maven.org/maven2/com/google/protobuf/protobuf-java/{PROTOBUF_VERSION}/{jar_file}'
+    file_to_download = out_dir + f'/{jar_file}'
+
+    if not exists(file_to_download):
+        downloaded = download_file(url, file_to_download)
+        if not downloaded:
+            return downloaded
+
     command = f'{PROTOC} -I={PROTOBUF_DIR} --java_out={out_dir} {PROTOBUF_DTIG_DIR}/*.proto'
     return run_command(command)
 
@@ -57,10 +68,10 @@ def install_protoc(force_install : bool = False) -> VoidResult:
     # Make it configurable
     repo_dir = ROOT_DIR + "tmp_protobuf_repo"
     url = "https://github.com/protocolbuffers/protobuf/"
-    version = "v3.20.3"
+    version = f'v{PROTOBUF_VERSION}'
 
     if not os.path.isdir(repo_dir):
-        cloned = run_command(f'git clone --depth 1 --recurse-submodules --shallow-submodules --branch {version} {url} {repo_dir}')
+        cloned = git.Git(url).clone(repo_dir, branch=version)
         if not cloned:
             return cloned
 

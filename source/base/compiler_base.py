@@ -12,6 +12,7 @@ class CompilerBase():
         self.output_file = output_file
         self.project = None
         self.version = None
+        self.compiler = None
 
         self.sources = []
         self.libraries = []
@@ -28,6 +29,13 @@ class CompilerBase():
     @abstractmethod
     def generate(self) -> VoidResult:
         raise Exception("generate must be implemented")
+
+    @abstractmethod
+    def install(self, version, installation_dir=None) -> VoidResult:
+        raise Exception("generate must be implemented")
+
+    def set_compiler(self, compiler : str):
+        self.compiler = compiler
 
     def set_project(self, project : str):
         self.project = project

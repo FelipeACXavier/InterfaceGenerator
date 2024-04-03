@@ -339,8 +339,6 @@ dtig::MReturnValue SendMessage(const google::protobuf::Message& message)
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "logging.h"
-
 int main(int argc, char *argv[])
 {
   std::string federateName, fomPath, rtiAddress;
