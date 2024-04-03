@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package dti.Stop;
-
-enum EStopMode {
-  UNKNOWN = 0;
-  CLEAN   = 1;
-  FORCE   = 2;
-}
