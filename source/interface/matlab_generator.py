@@ -84,7 +84,7 @@ class ServerGenerator(GeneratorBase):
             return VoidResult.failed(f'Failed to read method: {result}')
 
         result = self.parse_template(
-            data, KEY_PARSE, has_argument=True, maximum=8)
+            data, KEY_PARSE, has_argument=True, maximum=NUMBER_OF_MESSAGES)
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
@@ -95,7 +95,7 @@ class ServerGenerator(GeneratorBase):
             data = matlab.read_file(self.engine_template_file)
 
             result = self.parse_template(
-                data, KEY_CALLBACK, has_argument=True, maximum=10)
+                data, KEY_CALLBACK, has_argument=True, maximum=None)
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read callback file: {result}')
 

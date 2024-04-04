@@ -21,8 +21,9 @@ self.value_references = {}
 
 # @callback(initialize)
 def parse_initialize(message) -> Message:
-    self.model_name = self.parse_and_assign_optional(message, "model_name")
-    if self.model_name is None:
+    if message.HasField("model_name"):
+        self.model_name = message.model_name.value
+    else:
         return self.return_code(dtig_code.UNKNOWN_OPTION, f'No model provided')
 
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
@@ -30,30 +31,10 @@ def parse_initialize(message) -> Message:
 # @callback(advance)
 def parse_advance(self, message) -> Message:
     if message.HasField("step_size"):
-        step_size = self.parse_number(message.step_size.step)
-        if step_size is None:
-            return self.return_code(dtig_code.INVALID_OPTION, f'Step must be a float')
-
-        self.step_size = step_size
+        self.step_size = message.step_size.step
 
     self.step = True
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
-
-# @callback(setinput)
-def parse_input(reference, value):
-    self.fmu.setReal([self.value_references[reference]], [value])
-    return self.return_code(dtig_code.SUCCESS)
-
-# @callback(getoutput)
-def parse_output(incoming_references) -> Message:
-    n_outputs = len(incoming_references)
-    references = [self.value_references[ref] for ref in incoming_references]
-
-    print(f'Getting values: {references} from {incoming_references}')
-    values = self.fmu.getReal(references)
-    print(f'Values: {values}')
-
-    return values
 
 # @callback(stop)
 def parse_stop(message) -> Message:
@@ -64,20 +45,15 @@ def parse_stop(message) -> Message:
 
 # @callback(start)
 def parse_start(message) -> Message:
-    self.start_time = self.parse_and_assign_optional(message, "start_time")
-    if self.start_time is None:
-        return self.return_code(dtig_code.INVALID_OPTION, f'Start time must be a float')
+    if message.HasField("start_time"):
+        self.start_time = message.start_time.value
 
-    self.stop_time = self.parse_and_assign_optional(message, "stop_time")
-    if self.stop_time is None:
-        return self.return_code(dtig_code.INVALID_OPTION, f'Stop time must be a float')
+    if message.HasField("stop_time"):
+        self.stop_time = message.stop_time.value
 
     if message.HasField("step_size"):
-        step_size = self.parse_number(message.step_size.step)
-        if step_size is None:
-            return self.return_code(dtig_code.INVALID_OPTION, f'Step must be a float')
-
-        self.step_size = step_size
+        # TODO: Add support for micro steps
+        self.step_size = message.step_size.step
 
     # For now, we accept either continuous or stepped simulation
     if message.run_mode == dtig_run_mode.CONTINUOUS:
@@ -87,11 +63,12 @@ def parse_start(message) -> Message:
     else:
         return self.return_code(dtig_code.INVALID_OPTION, f'Unknown run mode: {message.run_mode}')
 
-    print(f'Starting with: {dtig_run_mode.ERunMode.Name(message.run_mode)}.\nRunning from {self.start_time:0.4f} to {self.stop_time:0.4f} with {self.step_size:0.4f}')
+    print(f'Starting with: {dtig_run_mode.ERunMode.Name(message.run_mode)}.')
+    print(f'Running from {self.start_time:0.4f} to {self.stop_time:0.4f} with {self.step_size:0.4f}')
 
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
-# @callback(modelinfo)
+# @callback(model_info)
 def parse_model_info() -> Message:
     if not self.model_name:
         return self.return_code(dtig_code.FAILURE, f'Model is not yet known')

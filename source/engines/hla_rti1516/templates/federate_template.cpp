@@ -171,7 +171,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   while (true)
   {
-    // @>callback(getoutput)();
+    // @>callback(get_output)();
 
     auto ret = SendMessage(aMessage);
     if (ret.code() == dtig::ReturnCode::INVALID_STATE)
@@ -253,11 +253,11 @@ void enableTimePolicy()
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
-    // @>callback(setparameter)(theObject, theAttributeValues);
+    // @>callback(set_parameter)(theObject, theAttributeValues);
   };
 
   fedamb->interactionReceived = [this](rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues) {
-    // @>callback(setinput)(theInteraction, theParameterValues);
+    // @>callback(set_input)(theInteraction, theParameterValues);
   };
 
   // @>callback(subscribe)();
@@ -279,7 +279,7 @@ rti1516::VariableLengthData toVariableLengthData(const char* s)
 // @method(private)
 void updateAttributeValues(ObjectInstanceHandle objectHandle)
 {
-  // @>callback(getparameter)(objectHandle);
+  // @>callback(get_parameter)(objectHandle);
 }
 
 // @method(private)

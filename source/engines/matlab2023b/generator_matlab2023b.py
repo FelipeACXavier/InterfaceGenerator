@@ -14,4 +14,6 @@ class ServerGeneratorMatlab2023b():
 
   def generate(self, config : ModelConfigurationBase) -> VoidResult:
     matlab_generator = ServerGenerator(self.output_file)
+    matlab_generator.engine_template_file = engine_folder + "/server_callbacks.m"
+
     return matlab_generator.generate(config)

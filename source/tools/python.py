@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+from common.keys import *
 from common.result import VoidResult
 
 DEFAULT_INDENTATION = "    "
@@ -38,3 +39,31 @@ def read_file(file : str) -> str:
             # Use spaces instead of tabs
             data += line.replace("\t", DEFAULT_INDENTATION)
     return data
+
+def to_proto_message(variable_type):
+    if variable_type == TYPE_FLOAT_32:
+        return f'dtig_utils.MF32()'
+    elif variable_type == TYPE_FLOAT_64:
+        return f'dtig_utils.MF64()'
+    elif variable_type == TYPE_INT_8:
+        return f'dtig_utils.MI8()'
+    elif variable_type == TYPE_INT_16:
+        return f'dtig_utils.MI16()'
+    elif variable_type == TYPE_INT_32:
+        return f'dtig_utils.MI32()'
+    elif variable_type == TYPE_INT_64:
+        return f'dtig_utils.MI64()'
+    elif variable_type == TYPE_UINT_8:
+        return f'dtig_utils.MU8()'
+    elif variable_type == TYPE_UINT_16:
+        return f'dtig_utils.MU16()'
+    elif variable_type == TYPE_UINT_32:
+        return f'dtig_utils.MU32()'
+    elif variable_type == TYPE_UINT_64:
+        return f'dtig_utils.MU64()'
+    elif variable_type == TYPE_STRING:
+        return f'dtig_utils.MString()'
+    elif variable_type == TYPE_BOOL:
+        return f'dtig_utils.MBool()'
+    elif variable_type == TYPE_BYTES:
+        return f'dtig_utils.MBytes()'

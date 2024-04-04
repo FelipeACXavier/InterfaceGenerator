@@ -11,34 +11,54 @@
   "superdensetime": false,
   "inputs": [
     {
-      "id": 0,
-      "name": "Desired speed",
-      "type": "float",
-      "unit": "m/s"
+      "id": 3,
+      "name": "h",
+      "description": "Height of the ball",
+      "type": "float64",
+      "unit": "m"
     },
     {
-      "id": 1,
-      "name": "Load",
-      "description": "Here we only consider the load due to passenger mass",
-      "type": "uint",
-      "unit": "kg"
+      "id": 4,
+      "name": "v",
+      "description": "Velocity of the ball",
+      "type": "float64",
+      "unit": "m/s"
     }
   ],
   "outputs": [
     {
-      "id": 1000,
-      "name": "Current speed",
-      "type": "float",
-      "unit": "m/s"
+      "id": 0,
+      "name": "h",
+      "description": "Height of the ball",
+      "type": "float64",
+      "unit": "m",
+      "namespace": "InteractionRoot.Outputs"
+    },
+    {
+      "id": 1,
+      "name": "v",
+      "description": "Velocity of the ball",
+      "type": "float64",
+      "unit": "m/s",
+      "namespace": "InteractionRoot.Outputs"
     }
   ],
   "parameters": [
-      {
-        "id": 0,
-        "name": "Mass",
-        "type": "uint",
-        "unit": "kg"
-      }
+    {
+      "id": 0,
+      "name": "g",
+      "description": "Gravity",
+      "type": "float64",
+      "unit": "m/s^2",
+      "namespace": "ObjectRoot.Parameters"
+    },
+    {
+      "id": 1,
+      "name": "e",
+      "description": "Coefficient of restitution",
+      "type": "float64",
+      "namespace": "ObjectRoot.Parameters"
+    }
   ],
   "origin": [
     "right",

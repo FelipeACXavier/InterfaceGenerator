@@ -84,15 +84,15 @@ function returnValue = handleMessage(message)
   elseif message.HasField("start")
     returnValue = % @>parse(start)(message.start);
   elseif message.HasField("input")
-    returnValue = % @>parse(setinput)(message.input.inputs);
+    returnValue = % @>parse(set_input)(message.input.inputs);
   elseif message.HasField("output")
-    returnValue = % @>parse(getoutput)(message.output.outputs);
+    returnValue = % @>parse(get_output)(message.output.outputs);
   elseif message.HasField("advance")
     returnValue = % @>parse(advance)(message.advance);
   elseif message.HasField("initialize")
     returnValue = % @>parse(initialize)(message.initialize);
   else
-    returnValue = % @>parse(modelinfo)();
+    returnValue = % @>parse(model_info)();
   end
 end
 
@@ -133,7 +133,7 @@ function returnValue = parse_stop(message)
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
 
-% @parse(setinput)
+% @parse(set_input)
 function returnValue = parse_set_input(message)
   global state;
   if (state == State.UNINITIALIZED)
@@ -148,7 +148,7 @@ function returnValue = parse_set_input(message)
       identifier = message.getIdentifiers().getNames().getNames(i);
       value = dtig.Helpers.unpack(message.getValues(i));
       if value
-        returnValue = % @>callback(setinput)(identifier, value.getValue());
+        returnValue = % @>callback(set_input)(identifier, value.getValue());
         if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
           return;
         end
@@ -164,7 +164,7 @@ function returnValue = parse_set_input(message)
   end
 end
 
-% @parse(getoutput)
+% @parse(get_output)
 function returnValue = parse_get_output(message)
   global state;
   if (state == State.UNINITIALIZED)
@@ -176,7 +176,7 @@ function returnValue = parse_get_output(message)
   if (message.getIdentifiers().HasField("names"))
     names = message.getIdentifiers().getNames().getNames();
     n_outputs = names.size();
-    values = % @>callback(getoutput)(names);
+    values = % @>callback(get_output)(names);
     if values.size() ~= n_outputs
       returnValue = createReturn(dtig.EReturnCode.FAILURE, 'Failed to get all outputs');
       return
@@ -217,7 +217,7 @@ function returnValue = parse_advance(message)
   returnValue = % @>callback(advance)(message);
 end
 
-% @parse(modelinfo)
+% @parse(model_info)
 function returnValue = parse_model_info()
   global state;
   if (state == State.UNINITIALIZED)
@@ -225,5 +225,35 @@ function returnValue = parse_model_info()
     return;
   end
 
-  returnValue = % @>callback(modelinfo)();
+  returnValue = % @>callback(model_info)();
+end
+
+% @method(public)
+function returnValue = parse_and_assign_optional(message, name)
+  if message.HasField(name):
+    returnValue = parse_number(getattr(message, name))
+  end
+end
+
+% @method(public)
+function returnValue = parse_number(message)
+    fields = message.getAllFields()
+    if fields.size() ~= 1
+      return
+    end
+
+    if "dtig." not in f'{type(fields.get(0).get(1))}':
+      returnValue = message.getValue();
+      return
+    end
+
+    if message.hasFvalue()
+      return message.getFvalue().getValue();
+    elseif message.hasIvalue()
+      return message.getFvalue().getValue();
+    elseif message.hasUvalue()
+      return message.getFvalue().getValue();
+    elseif message.isInitialized()
+      return message.getValue();
+    end
 end

@@ -44,10 +44,10 @@ rti1516::VariableLengthData toVariableLengthData(const char* s);
 // @>callback(publish)
 // @>callback(subscribe)
 // @>callback(initialize)
-// @>callback(setparameter)
-// @>callback(getparameter)
-// @>callback(setinput)
-// @>callback(getoutput)
+// @>callback(set_parameter)
+// @>callback(get_parameter)
+// @>callback(set_input)
+// @>callback(get_output)
 
 void waitForUser();
 void enableTimePolicy();

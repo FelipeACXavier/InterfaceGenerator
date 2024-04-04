@@ -90,27 +90,34 @@ class ServerGenerator(GeneratorBase):
             return VoidResult.failed(f'Failed to read method: {result}')
 
         result = self.parse_template(
-            data, KEY_PARSE, has_argument=True, maximum=8)
+            data, KEY_PARSE, has_argument=True, maximum=NUMBER_OF_MESSAGES)
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
-        LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
-        formatting = python.format(self.engine_template_file)
-        if not formatting.is_success():
-            return formatting
+        # Callbacks can be overwritten by each engine, but by parsing them here, we at least ensure that they exist
+        result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=NUMBER_OF_MESSAGES)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read callbacks: {result}')
 
         # Then parse the engine template
-        data = python.read_file(self.engine_template_file)
+        if self.engine_template_file:
+            LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
+            formatting = python.format(self.engine_template_file)
+            if not formatting.is_success():
+                return formatting
 
-        result = self.parse_template(
-            data, KEY_CALLBACK, has_argument=True, maximum=10)
-        if not result.is_success():
-            return VoidResult.failed(f'Failed to read callback file: {result}')
+            data = python.read_file(self.engine_template_file)
 
-        result = self.parse_template(
-            data, KEY_METHOD, has_argument=False, maximum=None)
-        if not result.is_success():
-            return VoidResult.failed(f'Failed to read method: {result}')
+            result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=None)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read callback file: {result}')
+
+            result = self.parse_template(
+                data, KEY_METHOD, has_argument=False, maximum=None)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read method: {result}')
 
         return VoidResult()
 
@@ -233,7 +240,6 @@ class ServerGenerator(GeneratorBase):
             function_args = ("self, " + function_args).strip().rstrip(",")
 
         return function_id, function_args
-
 
 # =======================================================================
 # Client generator

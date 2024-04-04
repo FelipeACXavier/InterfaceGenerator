@@ -111,7 +111,7 @@ class ClientGeneratorRTI1516():
         h_body += h
         cpp_body += cpp
 
-        h, cpp = self.generate_model_set_param()
+        h, cpp = self.generate_model_set_parameter()
         h_body += h
         cpp_body += cpp
 
@@ -307,16 +307,16 @@ class ClientGeneratorRTI1516():
 
         return h_body, cpp_body
 
-    def generate_model_set_param(self) -> str:
+    def generate_model_set_parameter(self) -> str:
         h_body = ""
         cpp_body = ""
         if not self.config.has(KEY_PARAMETERS):
             return h_body, cpp_body
 
-        h_body = f'\n// @callback({KEY_SET_PARAM})\n'
+        h_body = f'\n// @callback({KEY_SET_PARAMETER})\n'
         h_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes);\n"
 
-        cpp_body = f'\n// @callback({KEY_SET_PARAM})\n'
+        cpp_body = f'\n// @callback({KEY_SET_PARAMETER})\n'
         cpp_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)\n{\n"
         cpp_body += "\tdtig::MParameter paramMessage;\n"
 
@@ -375,10 +375,10 @@ class ClientGeneratorRTI1516():
         if not self.config.has(KEY_OUTPUTS):
             return h_body, cpp_body
 
-        h_body += f'\n// @callback({KEY_GET_PARAM})\n'
+        h_body += f'\n// @callback({KEY_GET_PARAMETER})\n'
         h_body += f'void GetParameter(const ObjectInstanceHandle& handler);\n'
 
-        cpp_body += f'\n// @callback({KEY_GET_PARAM})\n'
+        cpp_body += f'\n// @callback({KEY_GET_PARAMETER})\n'
         cpp_body += "void GetParameter(const ObjectInstanceHandle& handler)\n{\n"
         cpp_body += "\tdtig::MParameter paramMessage;\n"
 
