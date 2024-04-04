@@ -38,8 +38,12 @@ def __init__(self):
     self.lock = threading.Lock()
     self.condition = threading.Condition(lock=self.lock)
 
-    self.server_thread = threading.Thread(target=self.run_server)
-    self.model_thread = threading.Thread(target=self.run_model)
+    self.server_thread = threading.Thread(
+        target=#@>callback(runserver)
+    )
+    self.model_thread = threading.Thread(
+        target=#@>callback(runmodel)
+    )
 
 # @destructor(public)
 def __del__(self):
@@ -275,7 +279,7 @@ if __name__ == "__main__":
             PORT = int(sys.argv[i + 1])
 
     wrapper = # @>classname()
-    wrapper.run()
+    wrapper.# @>run()
 
 # @states
 HOST = "127.0.0.1"

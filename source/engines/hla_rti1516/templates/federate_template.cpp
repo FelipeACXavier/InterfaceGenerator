@@ -137,8 +137,8 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   dtig::MDTMessage sMessage;
   dtig::MStart startMessage;
-  startMessage.mutable_start_time()->mutable_fvalue()->set_value(0.0f);
-  startMessage.mutable_stop_time()->mutable_fvalue()->set_value(5.0f);
+  startMessage.mutable_start_time()->set_value(0.0f);
+  startMessage.mutable_stop_time()->set_value(5.0f);
   startMessage.set_run_mode(dtig::Run::STEP);
   *sMessage.mutable_start() = startMessage;
 
@@ -166,7 +166,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   dtig::MDTMessage aMessage;
   dtig::MAdvance advanceMessage;
-  advanceMessage.mutable_step_size()->mutable_step()->mutable_fvalue()->set_value(STEP);
+  advanceMessage.mutable_step_size()->set_step(STEP);
   *aMessage.mutable_advance() = advanceMessage;
 
   while (true)

@@ -25,6 +25,8 @@ class HppGenerator(GeneratorBase):
         self.function_regex = cpp_function_regex
         self.comment_char = fr'\/\/'
 
+        self.callbacks = cpp.create_structure()
+
     def read_templates(self) -> VoidResult:
         if self.common_template_file is None:
             self.common_template_file = engine_folder + "/templates/cpp_template.h"
@@ -203,7 +205,6 @@ class HppGenerator(GeneratorBase):
             body += "\npublic:\n"
 
         if self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]:
-            LOG_INFO(f'Adding: {self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]}')
             body += self.callbacks[KEY_CONSTRUCTOR][KEY_PUBLIC][KEY_BODY]
 
         if self.callbacks[KEY_DESTRUCTOR][KEY_PUBLIC][KEY_BODY]:
@@ -311,6 +312,8 @@ class CppGenerator(GeneratorBase):
         # First groups must be the function name and the second group should be the arguments
         self.function_regex = cpp_function_regex
         self.comment_char = fr'\/\/'
+
+        self.callbacks = cpp.create_structure()
 
     def read_templates(self) -> VoidResult:
         if not self.common_template_file:

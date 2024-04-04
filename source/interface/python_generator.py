@@ -26,6 +26,8 @@ class ServerGenerator(GeneratorBase):
         self.comment_char = fr'#'
         self.function_regex = fr'def(.*)\((.*)\).*:'
 
+        self.callbacks = python.create_structure()
+
     def read_templates(self) -> VoidResult:
         self.common_template_file = engine_folder + \
             "/templates/python_server_template.py"
@@ -216,6 +218,7 @@ class ServerGenerator(GeneratorBase):
         args = groups[1]
         callback = groups[2]
 
+        LOG_INFO(groups)
         if callback:
             if self.is_valid_callback(callback):
                 if self.callbacks[name][callback][KEY_NAME]:

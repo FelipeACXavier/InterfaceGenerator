@@ -3,6 +3,7 @@ import subprocess
 
 from common.keys import *
 from common.result import VoidResult
+from common.default_structure import create_default_structure
 
 DEFAULT_INDENTATION = "    "
 
@@ -67,3 +68,42 @@ def to_proto_message(variable_type):
         return f'dtig_utils.MBool()'
     elif variable_type == TYPE_BYTES:
         return f'dtig_utils.MBytes()'
+
+def create_structure():
+    structure = create_default_structure()
+    structure[KEY_RUN][KEY_NAME]                            = "dtig_run"
+    structure[KEY_RUN_MODEL][KEY_NAME]                      = "dtig_run_model"
+    structure[KEY_RUN_SERVER][KEY_NAME]                     = "dtig_run_server"
+    structure[KEY_RUN_CLIENT][KEY_NAME]                     = "dtig_run_client"
+    structure[KEY_MESSAGE_HANDLER][KEY_NAME]                = "dtig_handle_message"
+
+    structure[KEY_PARSE][KEY_STOP][KEY_NAME]                = "dtig_stop"
+    structure[KEY_PARSE][KEY_START][KEY_NAME]               = "dtig_start"
+    structure[KEY_PARSE][KEY_ADVANCE][KEY_NAME]             = "dtig_advance"
+    structure[KEY_PARSE][KEY_PUBLISH][KEY_NAME]             = "dtig_publishers"
+    structure[KEY_PARSE][KEY_SUBSCRIBE][KEY_NAME]           = "dtig_subscribers"
+    structure[KEY_PARSE][KEY_SET_INPUT][KEY_NAME]           = "dtig_set_input"
+    structure[KEY_PARSE][KEY_GET_OUTPUT][KEY_NAME]          = "dtig_get_output"
+    structure[KEY_PARSE][KEY_INITIALIZE][KEY_NAME]          = "dtig_initialize"
+    structure[KEY_PARSE][KEY_MODEL_INFO][KEY_NAME]          = "dtig_model_info"
+    structure[KEY_PARSE][KEY_SET_PARAMETER][KEY_NAME]       = "dtig_set_parameter"
+    structure[KEY_PARSE][KEY_GET_PARAMETER][KEY_NAME]       = "dtig_get_parameter"
+
+    structure[KEY_CALLBACK][KEY_RUN][KEY_NAME]              = structure[KEY_RUN][KEY_NAME]
+    structure[KEY_CALLBACK][KEY_RUN_MODEL][KEY_NAME]        = structure[KEY_RUN_MODEL][KEY_NAME]
+    structure[KEY_CALLBACK][KEY_RUN_SERVER][KEY_NAME]       = structure[KEY_RUN_SERVER][KEY_NAME]
+    structure[KEY_CALLBACK][KEY_RUN_CLIENT][KEY_NAME]       = structure[KEY_RUN_CLIENT][KEY_NAME]
+
+    structure[KEY_CALLBACK][KEY_STOP][KEY_NAME]             = "dtig_engine_stop"
+    structure[KEY_CALLBACK][KEY_START][KEY_NAME]            = "dtig_engine_start"
+    structure[KEY_CALLBACK][KEY_ADVANCE][KEY_NAME]          = "dtig_engine_advance"
+    structure[KEY_CALLBACK][KEY_PUBLISH][KEY_NAME]          = "dtig_engine_publish"
+    structure[KEY_CALLBACK][KEY_SUBSCRIBE][KEY_NAME]        = "dtig_engine_subscribe"
+    structure[KEY_CALLBACK][KEY_SET_INPUT][KEY_NAME]        = "dtig_engine_set_input"
+    structure[KEY_CALLBACK][KEY_GET_OUTPUT][KEY_NAME]       = "dtig_engine_get_output"
+    structure[KEY_CALLBACK][KEY_INITIALIZE][KEY_NAME]       = "dtig_engine_initialize"
+    structure[KEY_CALLBACK][KEY_MODEL_INFO][KEY_NAME]       = "dtig_engine_model_info"
+    structure[KEY_CALLBACK][KEY_SET_PARAMETER][KEY_NAME]    = "dtig_engine_set_parameter"
+    structure[KEY_CALLBACK][KEY_GET_PARAMETER][KEY_NAME]    = "dtig_engine_get_parameter"
+
+    return structure

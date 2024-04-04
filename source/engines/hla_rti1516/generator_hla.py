@@ -7,6 +7,7 @@ from common.keys import *
 from common.result import *
 from common.logging import *
 
+from tools import cpp
 from tools.file_system import create_dir
 from common.model_configuration_base import ModelConfigurationBase
 
@@ -224,20 +225,13 @@ class ClientGeneratorRTI1516():
         cpp_body += "\tfor (auto i = parameterValues.begin(); i != parameterValues.end(); ++i)\n"
         cpp_body += "\t{\n"
         cpp_body += "\t\tstd::string item = mInputHandlers[i->first];\n"
-        cpp_body += "\t\tinputMessage.mutable_inputs()->mutable_identifiers()->mutable_names()->add_names(item);\n"
+        cpp_body += "\t\t*inputMessage.mutable_inputs()->add_identifiers() = item;\n"
         for i, cfg in enumerate(self.config[KEY_INPUTS]):
             cpp_body += f'\t\t{"if" if i == 0 else "else if"} (item == "{cfg[KEY_NAME]}")\n'
             cpp_body += "\t\t{\n"
-            if cfg["type"] == "float":
-                cpp_body += f'\t\t\tdtig::MF32 value;\n'
-            elif cfg["type"] == "double":
-                cpp_body += f'\t\t\tdtig::MF64 value;\n'
-            elif cfg["type"] == "int32":
-                cpp_body += f'\t\t\tdtig::MI32 value;\n'
-            elif cfg["type"] == "uint32":
-                cpp_body += f'\t\t\tdtig::MU32 value;\n'
+            cpp_body += f'\t\t\t{cpp.to_proto_message(cfg["type"])} value;\n'
 
-            cpp_body += f'\t\t\tvalue.set_value(fromData<{cfg["type"]}>(i->second));\n'
+            cpp_body += f'\t\t\tvalue.set_value(fromData<{cpp.to_type(cfg["type"])}>(i->second));\n'
             cpp_body += "\t\t\tinputMessage.mutable_inputs()->add_values()->PackFrom(value);\n"
 
             cpp_body += "\t\t}\n"
@@ -251,7 +245,7 @@ class ClientGeneratorRTI1516():
         cpp_body += "\t}\n\n"
 
         cpp_body += '\tdtig::MDTMessage message;\n'
-        cpp_body += '\t*message.mutable_input() = inputMessage;\n'
+        cpp_body += '\t*message.mutable_set_input() = inputMessage;\n'
         cpp_body += '\tdtig::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dtig::ReturnCode::SUCCESS)\n\t'
         cpp_body += '\tstd::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;\n'
@@ -275,10 +269,10 @@ class ClientGeneratorRTI1516():
 
         if self.config.has(KEY_OUTPUTS):
             for o in self.config[KEY_OUTPUTS]:
-                cpp_body += f'\toutputMessage.mutable_outputs()->mutable_identifiers()->mutable_names()->add_names("{o[KEY_NAME]}");\n'
+                cpp_body += f'\t*outputMessage.mutable_outputs()->add_identifiers() = "{o[KEY_NAME]}";\n'
 
         cpp_body += '\tdtig::MDTMessage message;\n'
-        cpp_body += '\t*message.mutable_output() = outputMessage;\n'
+        cpp_body += '\t*message.mutable_get_output() = outputMessage;\n'
         cpp_body += '\tdtig::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dtig::ReturnCode::SUCCESS)\n\t{\n'
         cpp_body += '\t\tstd::cout << "Failed to get outputs: " << ret.error_message().value() << std::endl;\n'
@@ -286,20 +280,13 @@ class ClientGeneratorRTI1516():
 
         cpp_body += "\tParameterHandleValueMap parameters;\n"
         for index, o in enumerate(self.config[KEY_OUTPUTS]):
-            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers().names().names({index});\n'
-            if o["type"] == "float":
-                cpp_body += f'\tdtig::MF32 value{o[KEY_NAME]};\n'
-            elif o["type"] == "double":
-                cpp_body += f'\tdtig::MF64 value{o[KEY_NAME]};\n'
-            elif o["type"] == "int32":
-                cpp_body += f'\tdtig::MI32 value{o[KEY_NAME]};\n'
-            elif o["type"] == "uint32":
-                cpp_body += f'\tdtig::MU32 value{o[KEY_NAME]};\n'
+            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers({index});\n'
+            cpp_body += f'\t{cpp.to_proto_message(o["type"])} value{o[KEY_NAME]};\n'
 
             cpp_body += f'\tif (ret.values().values({index}).UnpackTo(&value{o[KEY_NAME]}))\n'
             cpp_body += "\t{\n"
-            cpp_body += f'\t\t{o["type"]} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
-            cpp_body += f'\t\tparameters[mOutputHandlers.at(id{o[KEY_NAME]})] = toData<{o["type"]}>(&v{o[KEY_NAME]});\n'
+            cpp_body += f'\t\t{cpp.to_type(o["type"])} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
+            cpp_body += f'\t\tparameters[mOutputHandlers.at(id{o[KEY_NAME]})] = toData<{cpp.to_type(o["type"])}>(&v{o[KEY_NAME]});\n'
             cpp_body += "\t}\n\n"
 
         cpp_body += f'\trtiamb->sendInteraction({OUTPUT_HANDLER}, parameters, toVariableLengthData(mName.c_str()));\n'
@@ -318,7 +305,7 @@ class ClientGeneratorRTI1516():
 
         cpp_body = f'\n// @callback({KEY_SET_PARAMETER})\n'
         cpp_body += "void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)\n{\n"
-        cpp_body += "\tdtig::MParameter paramMessage;\n"
+        cpp_body += "\tdtig::MSetParameter paramMessage;\n"
 
         cpp_body += "\tfor (auto i = attributes.begin(); i != attributes.end(); ++i)\n"
         cpp_body += "\t{\n"
@@ -333,20 +320,12 @@ class ClientGeneratorRTI1516():
         cpp_body += "\t\tif (item.empty())\n"
         cpp_body += "\t\t\tcontinue;\n\n"
 
-        cpp_body += "\t\tparamMessage.mutable_parameters()->mutable_identifiers()->mutable_names()->add_names(item);\n"
+        cpp_body += "\t\t*paramMessage.mutable_parameters()->add_identifiers() = item;\n"
         for i, cfg in enumerate(self.config[KEY_PARAMETERS]):
             cpp_body += f'\t\t{"if" if i == 0 else "else if"} (item == "{cfg[KEY_NAME]}")\n'
             cpp_body += "\t\t{\n"
-            if cfg["type"] == "float":
-                cpp_body += f'\t\t\tdtig::MF32 value;\n'
-            elif cfg["type"] == "double":
-                cpp_body += f'\t\t\tdtig::MF64 value;\n'
-            elif cfg["type"] == "int32":
-                cpp_body += f'\t\t\tdtig::MI32 value;\n'
-            elif cfg["type"] == "uint32":
-                cpp_body += f'\t\t\tdtig::MU32 value;\n'
-
-            cpp_body += f'\t\t\tvalue.set_value(fromData<{cfg["type"]}>(i->second));\n'
+            cpp_body += f'\t\t\t{cpp.to_proto_message(cfg["type"])} value;\n'
+            cpp_body += f'\t\t\tvalue.set_value(fromData<{cpp.to_type(cfg["type"])}>(i->second));\n'
             cpp_body += "\t\t\tparamMessage.mutable_parameters()->add_values()->PackFrom(value);\n"
 
             cpp_body += "\t\t}\n"
@@ -360,7 +339,7 @@ class ClientGeneratorRTI1516():
         cpp_body += "\t}\n\n"
 
         cpp_body += '\tdtig::MDTMessage message;\n'
-        cpp_body += '\t*message.mutable_parameter() = paramMessage;\n'
+        cpp_body += '\t*message.mutable_set_parameter() = paramMessage;\n'
         cpp_body += '\tdtig::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dtig::ReturnCode::SUCCESS)\n\t'
         cpp_body += '\tstd::cout << "Failed to set parameters: " << ret.error_message().value() << std::endl;\n'
@@ -380,14 +359,14 @@ class ClientGeneratorRTI1516():
 
         cpp_body += f'\n// @callback({KEY_GET_PARAMETER})\n'
         cpp_body += "void GetParameter(const ObjectInstanceHandle& handler)\n{\n"
-        cpp_body += "\tdtig::MParameter paramMessage;\n"
+        cpp_body += "\tdtig::MGetParameter paramMessage;\n"
 
         if self.config.has(KEY_PARAMETERS):
             for p in self.config[KEY_PARAMETERS]:
-                cpp_body += f'\tparamMessage.mutable_parameters()->mutable_identifiers()->mutable_names()->add_names("{p[KEY_NAME]}");\n'
+                cpp_body += f'\t*paramMessage.mutable_parameters()->add_identifiers() = "{p[KEY_NAME]}";\n'
 
         cpp_body += '\tdtig::MDTMessage message;\n'
-        cpp_body += '\t*message.mutable_parameter() = paramMessage;\n'
+        cpp_body += '\t*message.mutable_get_parameter() = paramMessage;\n'
         cpp_body += '\tdtig::MReturnValue ret = SendMessage(message);\n'
         cpp_body += '\tif (ret.code() != dtig::ReturnCode::SUCCESS)\n\t{\n'
         cpp_body += '\t\tstd::cout << "Failed to get parameters: " << ret.error_message().value() << std::endl;\n'
@@ -395,20 +374,13 @@ class ClientGeneratorRTI1516():
 
         cpp_body += "\tAttributeHandleValueMap attributes;;\n"
         for index, o in enumerate(self.config[KEY_PARAMETERS]):
-            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers().names().names({index});\n'
-            if o["type"] == "float":
-                cpp_body += f'\tdtig::MF32 value{o[KEY_NAME]};\n'
-            elif o["type"] == "double":
-                cpp_body += f'\tdtig::MF64 value{o[KEY_NAME]};\n'
-            elif o["type"] == "int32":
-                cpp_body += f'\tdtig::MI32 value{o[KEY_NAME]};\n'
-            elif o["type"] == "uint32":
-                cpp_body += f'\tdtig::MU32 value{o[KEY_NAME]};\n'
+            cpp_body += f'\tstd::string id{o[KEY_NAME]} = ret.values().identifiers({index});\n'
+            cpp_body += f'\t{cpp.to_proto_message(o["type"])} value{o[KEY_NAME]};\n'
 
             cpp_body += f'\tif (ret.values().values({index}).UnpackTo(&value{o[KEY_NAME]}))\n'
             cpp_body += "\t{\n"
-            cpp_body += f'\t\t{o["type"]} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
-            cpp_body += f'\t\tattributes[{PARAMETER_HANDLER}s.at(id{o[KEY_NAME]})] = toData<{o["type"]}>(&v{o[KEY_NAME]});\n'
+            cpp_body += f'\t\t{cpp.to_type(o["type"])} v{o[KEY_NAME]} = value{o[KEY_NAME]}.value();\n'
+            cpp_body += f'\t\tattributes[{PARAMETER_HANDLER}s.at(id{o[KEY_NAME]})] = toData<{cpp.to_type(o["type"])}>(&v{o[KEY_NAME]});\n'
             cpp_body += "\t}\n\n"
 
         cpp_body += f'\trtiamb->updateAttributeValues(handler, attributes, toVariableLengthData(mName.c_str()));\n'
