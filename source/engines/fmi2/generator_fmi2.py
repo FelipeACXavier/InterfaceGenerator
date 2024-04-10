@@ -63,7 +63,6 @@ class ServerGeneratorFMI2(ServerGenerator):
 
         return body
 
-
     def generate_model_get_output(self) -> str:
         body = f'\n# @callback({KEY_GET_OUTPUT})\n'
         body += "def get_outputs(references):\n"
@@ -89,7 +88,6 @@ class ServerGeneratorFMI2(ServerGenerator):
         body += f'\treturn return_message\n'
 
         return body
-
 
     def generate_model_set_parameter(self) -> str:
         body = f'\n# @callback({KEY_SET_PARAMETER})\n'
@@ -117,7 +115,6 @@ class ServerGeneratorFMI2(ServerGenerator):
         return body
 
         return body
-
 
     def generate_model_get_parameter(self) -> str:
         body = f'\n# @callback({KEY_GET_PARAMETER})\n'

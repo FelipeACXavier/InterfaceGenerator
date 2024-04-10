@@ -24,6 +24,8 @@ class ServerGenerator(GeneratorBase):
         self.function_regex = fr'^function\s*([\w\d\[\]]*)?.*(?<=\s)([\w\d]*)\((.*)\)'
         self.comment_char = fr'%'
 
+        self.callbacks = matlab.create_structure()
+
     def read_templates(self) -> VoidResult:
         self.common_template_file = engine_folder + \
             "/templates/matlab_server_template.m"
@@ -88,10 +90,15 @@ class ServerGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
-        LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
+        # Callbacks can be overwritten by each engine, but by parsing them here, we at least ensure that they exist
+        result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=NUMBER_OF_MESSAGES)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read callbacks: {result}')
 
         # Then parse the engine template
         if self.engine_template_file:
+            LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
             data = matlab.read_file(self.engine_template_file)
 
             result = self.parse_template(
@@ -167,7 +174,7 @@ class ServerGenerator(GeneratorBase):
             if not creation.is_success():
                 return creation
 
-            state_file = os.path.dirname(self.output_file) + "/State.m"
+            state_file = os.path.dirname(self.output_file) + "/Status.m"
             with open(state_file, "w") as file:
                 file.write(creation.value())
 

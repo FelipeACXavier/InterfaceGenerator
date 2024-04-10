@@ -7,24 +7,46 @@ javaaddpath('./');
 javaaddpath('./build');
 
 % import states
-import State.*;
+import Status.*;
 
 % Define global variables
-global step;
-global state;
+global startTime stopTime stepSize;
+global status modelName;
 
-step = false;
-state = State.UNINITIALIZED;
+startTime = 0.0;
+stopTime = 5.0;
+stepSize = 0.001;
+
+status = Status;
+status.state = dtig.EState.UNINITIALIZED;
+status.step = false;
 
 % @states
-classdef State
-  enumeration
-    UNINITIALIZED,
-    INITIALIZING,
-    IDLE,
-    RUNNING,
-    STEPPING,
-    STOPPED
+classdef Status < handle
+  properties
+    state
+    mode
+    step
+  end
+  methods
+    function set.state(obj, val)
+        obj.state = val;
+    end
+    function ret = get.state(obj)
+        ret = obj.state;
+    end
+    function set.step(obj, val)
+      obj.step = val;
+    end
+    function ret = get.step(obj)
+        ret = obj.step;
+    end
+    function set.mode(obj, val)
+      obj.mode = val;
+    end
+    function ret = get.mode(obj)
+        ret = obj.mode;
+    end
   end
 end
 
@@ -32,13 +54,26 @@ end
 % ======================================================================
 % Main
 % ======================================================================
-t = tcpserver("127.0.0.1", 8080, "ConnectionChangedFcn", @connectionFcn);
+server = tcpserver("127.0.0.1", 8080, "ConnectionChangedFcn", @connectionFcn);
 
-configureCallback(t, "byte", 5, @readByteFcn);
+configureCallback(server, "byte", 5, @readByteFcn);
 
-% Wait until the user presses enter and then clean the server
-pause
-clear t;
+% start running in parallel
+% start(dtig.ServerThread("127.0.0.1", 8080));
+
+try
+  disp("Server is running");
+  % @>runmodel();
+
+  disp("Model done, waiting for stop");
+  waitfor(status, "state", dtig.EState.STOPPED);
+  % pause
+catch exception
+  disp(getReport(exception));
+end
+
+disp("Server stopped");
+clear server;
 
 % ======================================================================
 % Functions
@@ -61,36 +96,47 @@ function readByteFcn(src, ~)
 
   % Read data and process it as a protobuf object
   data = read(src, src.NumBytesAvailable);
-  message = dti.ProtoWrapper.parseFrom(data);
-  returnValue = % @>messagehandler(message);
+  message = dtig.Helpers.parseFrom(data);
+  try
+    returnValue = % @>messagehandler(message);
+  catch exception
+    disp(getReport(exception));
+    returnValue = createReturn(dtig.EReturnCode.FAILURE, "Exception when handling message");
+  end
 
   % Send the reply
-  write(src, returnValue.toByteArray(b));
+  write(src, dtig.Helpers.toByteArray(returnValue), "int8");
 end
 
 % @method(public)
 function message = createReturn(code, errorMessage)
-  message = dti.MyProto.newBuilder();
+  message = dtig.MReturnValue.newBuilder();
   message.setCode(code);
   if (nargin == 2)
-    message.setMessage(errorMessage);
+    message.setErrorMessage(dtig.MString.newBuilder().setValue(errorMessage));
   end
 end
 
 % @messagehandler
 function returnValue = handleMessage(message)
-  if message.HasField("stop")
-    returnValue = % @>parse(stop)(message.stop);
-  elseif message.HasField("start")
-    returnValue = % @>parse(start)(message.start);
-  elseif message.HasField("input")
-    returnValue = % @>parse(set_input)(message.input.inputs);
-  elseif message.HasField("output")
-    returnValue = % @>parse(get_output)(message.output.outputs);
-  elseif message.HasField("advance")
-    returnValue = % @>parse(advance)(message.advance);
-  elseif message.HasField("initialize")
-    returnValue = % @>parse(initialize)(message.initialize);
+  if message.hasStop()
+    returnValue = % @>parse(stop)(message.getStop());
+  elseif message.hasStart()
+    returnValue = % @>parse(start)(message.getStart());
+  elseif message.hasSetInput()
+    returnValue = % @>parse(set_input)(message.getSetInput());
+  elseif message.hasGetOutput()
+    returnValue = % @>parse(get_output)(message.getGetOutput());
+  elseif message.hasAdvance()
+    returnValue = % @>parse(advance)(message.getAdvance());
+  elseif message.hasInitialize()
+    returnValue = % @>parse(initialize)(message.getInitialize());
+  elseif message.hasSetParameter()
+    returnValue = % @>parse(set_parameter)(message.getSetParameter());
+  elseif message.hasGetParameter()
+    returnValue = % @>parse(get_parameter)(message.getGetParameter());
+  elseif message.hasGetStatus()
+    returnValue = % @>parse(get_status)();
   else
     returnValue = % @>parse(model_info)();
   end
@@ -98,20 +144,20 @@ end
 
 % @parse(initialize)
 function returnValue = parse_initialize(message)
-  global state;
+  global status;
   returnValue = % @>callback(initialize)(message);
   if (returnValue.getCode() ~= dtig.EReturnCode.SUCCESS)
     return;
   end
 
-  state = State.INITIALIZING;
+  status.state = dtig.EState.INITIALIZED;
 end
 
 % @parse(start)
 function returnValue = parse_start(message)
-  global state;
+  global status;
   % If the model was not yet initialized, we cannot start
-  if (state == State.UNINITIALIZED)
+  if (status.state == dtig.EState.UNINITIALIZED)
     returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot start while UNINITIALIZED");
     return;
   end
@@ -121,96 +167,99 @@ end
 
 % @parse(stop)
 function returnValue = parse_stop(message)
-  global step;
-  global state;
+  global status;
+
   returnValue = % @>callback(stop)(message);
-  if (returnValue.getCode() ~= dtig.EReturnCode.SUCCESS)
-    return;
+  if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+    return
   end
 
-  step = True;
-  state = State.STOPPED;
-  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
+  status.step = true;
+  status.state = dtig.EState.STOPPED;
 end
 
 % @parse(set_input)
 function returnValue = parse_set_input(message)
-  global state;
-  if (state == State.UNINITIALIZED)
+  global status;
+  if (status.state == dtig.EState.UNINITIALIZED)
     returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot set input while UNINITIALIZED");
     return
   end
 
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
-  if (message.getIdentifiers().HasField("names"))
-    n_inputs = message.getIdentifiers().getNames().getNames().size();
-    for i = 1:n_inputs
-      identifier = message.getIdentifiers().getNames().getNames(i);
-      value = dtig.Helpers.unpack(message.getValues(i));
-      if value
-        returnValue = % @>callback(set_input)(identifier, value.getValue());
-        if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
-          return;
-        end
-      else
-        returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, 'Could not unpack value');
-        return;
-      end
+  nIds = message.getInputs().getIdentifiersCount() - 1;
+  for i = 0:nIds
+    identifier = string(message.getInputs().getIdentifiers(i));
+    anyValue = message.getInputs().getValues(i);
+    returnValue = % @>callback(set_input)(identifier, anyValue);
+    if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+      return;
     end
-  elseif message.getIdentifiers().HasField("ids")
-    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, 'Non-string ids not implemented');
-  else
-    returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, "No identifiers provided");
+  end
+end
+
+% @parse(set_parameter)
+function returnValue = parse_set_parameter(message)
+  global status;
+  if (status.state == dtig.EState.UNINITIALIZED)
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot set parameter while UNINITIALIZED");
+    return
+  end
+
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
+  nIds = message.getParameters().getIdentifiersCount() - 1;
+  for i = 0:nIds
+    identifier = message.getParameters().getIdentifiers(i);
+    anyValue = message.getParameters().getValues(i);
+    returnValue = % @>callback(set_parameter)(identifier, anyValue);
+    if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+      return;
+    end
   end
 end
 
 % @parse(get_output)
 function returnValue = parse_get_output(message)
-  global state;
-  if (state == State.UNINITIALIZED)
+  global status;
+  if (status.state == dtig.EState.UNINITIALIZED)
     returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get output while UNINITIALIZED");
     return;
   end
 
-  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
-  if (message.getIdentifiers().HasField("names"))
-    names = message.getIdentifiers().getNames().getNames();
-    n_outputs = names.size();
-    values = % @>callback(get_output)(names);
-    if values.size() ~= n_outputs
-      returnValue = createReturn(dtig.EReturnCode.FAILURE, 'Failed to get all outputs');
-      return
-    end
+  nIds = message.getOutputs().getIdentifiersCount();
+  returnValue = % @>callback(get_output)(message.getOutputs().getIdentifiersList());
+  if returnValue.getValues().getIdentifiersCount() ~= nIds && returnValue.getCode() == dtig.EReturnCode.SUCCESS
+    returnValue.setCode(dtig.EReturnCode.FAILURE);
+    returnValue.setErrorMessage("Failed to get all parameters");
+  end
+end
 
-    outputs = dtig.MValues.newBuilder();
-    names = dtig.MNames.newBuilder();
-    for i = 1:n_outputs
-      names.addNames(names.get(i));
+% @parse(get_parameter)
+function returnValue = parse_get_parameter(message)
+  global status;
+  if (status.state == dtig.EState.UNINITIALIZED)
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get parameter while UNINITIALIZED");
+    return;
+  end
 
-      %  Set the output value
-      outputs.addValues(com.google.protobuf.Any...
-        .pack(dtig.MF32.newBuilder()...
-          .setValue(values.get(i)).build()));
-    end
-
-    outputs.setIdentifiers(...
-      dtig.MIdentifiers.newBuilder()...
-        .setNames(names));
-
-    returnValue.setValues(outputs.build());
-
-  elseif message.getIdentifiers().HasField("ids")
-    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, 'Non-string ids not implemented');
-  else
-    returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, 'No identifiers provided');
+  nIds = message.getParameters().getIdentifiersCount();
+  returnValue = % @>callback(get_parameter)(message.getParameters().getIdentifiers());
+  if returnValue.getValues().getIdentifiersSize() ~= nIds && returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+    returnValue.setCode(dtig.EReturnCode.FAILURE);
+    returnValue.setErrorMessage("Failed to get all parameters");
   end
 end
 
 % @parse(advance)
 function returnValue = parse_advance(message)
-  global state;
-  if (state ~= State.STEPPING)
-    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, 'Cannot advance, not in STEPPING state');
+  global status;
+  if status.mode ~= dtig.ERunMode.STEPPED
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, 'Cannot advance, not in STEPPING mode');
+    return;
+  end
+
+  if status.state ~= dtig.EState.WAITING
+    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, 'Cannot advance, still running');
     return;
   end
 
@@ -219,8 +268,8 @@ end
 
 % @parse(model_info)
 function returnValue = parse_model_info()
-  global state;
-  if (state == State.UNINITIALIZED)
+  global status;
+  if (status.state == dtig.EState.UNINITIALIZED)
     returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get model info while UNINITIALIZED");
     return;
   end
@@ -228,32 +277,52 @@ function returnValue = parse_model_info()
   returnValue = % @>callback(model_info)();
 end
 
-% @method(public)
-function returnValue = parse_and_assign_optional(message, name)
-  if message.HasField(name):
-    returnValue = parse_number(getattr(message, name))
-  end
+% @parse(get_status)
+function returnValue = parse_get_status()
+  returnValue = % @>callback(get_status)();
 end
 
-% @method(public)
-function returnValue = parse_number(message)
-    fields = message.getAllFields()
-    if fields.size() ~= 1
-      return
-    end
+% @callback(initialize)
+function returnValue = initialize_callback(message)
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support initialize call");
+end
 
-    if "dtig." not in f'{type(fields.get(0).get(1))}':
-      returnValue = message.getValue();
-      return
-    end
+% @callback(advance)
+function returnValue = advance_callback(message)
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support advance call");
+end
 
-    if message.hasFvalue()
-      return message.getFvalue().getValue();
-    elseif message.hasIvalue()
-      return message.getFvalue().getValue();
-    elseif message.hasUvalue()
-      return message.getFvalue().getValue();
-    elseif message.isInitialized()
-      return message.getValue();
-    end
+% @callback(stop)
+function returnValue = stop_callback(message)
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
+end
+
+% @callback(start)
+function returnValue = start_callback(message)
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support start call");
+end
+
+% @callback(model_info)
+function returnValue = model_info_callback()
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support model_info call");
+end
+
+% @callback(set_input)
+function returnValue = set_input_callback()
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support set_input call");
+end
+
+% @callback(get_output)
+function returnValue = get_output_callback()
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support get_output call");
+end
+
+% @callback(set_parameter)
+function returnValue = set_parameter_callback()
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support set_parameter call");
+end
+
+% @callback(get_parameter)
+function returnValue = get_parameter_callback()
+  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support get_parameter call");
 end

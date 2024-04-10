@@ -13,6 +13,8 @@ import dtig.info_pb2 as dtig_info
 import dtig.start_pb2 as dtig_start
 import dtig.utils_pb2 as dtig_utils
 import dtig.input_pb2 as dtig_input
+import dtig.state_pb2 as dtig_state
+import dtig.status_pb2 as dtig_status
 import dtig.output_pb2 as dtig_output
 import dtig.values_pb2 as dtig_values
 import dtig.advance_pb2 as dtig_advance
@@ -32,7 +34,8 @@ FMI2Wrapper
 
 # @constructor(public)
 def __init__(self):
-    self.state: State = State.UNINITIALIZED
+    self.mode = dtig_run_mode.UNKNOWN
+    self.state = dtig_state.UNINITIALIZED
     self.server: socket.socket = None
 
     self.lock = threading.Lock()
@@ -63,21 +66,21 @@ def run(self) -> None:
 
 # @parse(initialize)
 def parse_initialize(message) -> Message:
-    if self.state != State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
+    if self.state != dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
 
     ret = # @>callback(initialize)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
-    self.state = State.INITIALIZING
+    self.state = dtig_state.INITIALIZED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
 # @parse(start)
 def parse_start(message) -> Message:
     # If the model was not yet initialized, we cannot start
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot start in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot start in state {dtig_state.EState.Name(self.state)}')
 
     return # @>callback(start)(message)
 
@@ -88,14 +91,14 @@ def parse_stop(message) -> Message:
         return ret
 
     self.step = True
-    self.state = State.STOPPED
+    self.state = dtig_state.STOPPED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
 # @parse(set_input)
 def parse_set_input(message) -> Message:
     # If the model was not yet initialized, we cannot set inputs
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot set input in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot set input in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.inputs.identifiers)
     for i in range(ids_length):
@@ -111,8 +114,8 @@ def parse_set_input(message) -> Message:
 
 # @parse(get_output)
 def parse_get_output(message) -> dtig_return.MReturnValue:
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get output in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get output in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.outputs.identifiers)
     return_message = # @>callback(get_output)(message.outputs.identifiers)
@@ -124,8 +127,8 @@ def parse_get_output(message) -> dtig_return.MReturnValue:
 
 # @parse(set_parameter)
 def parse_set_parameter(message) -> dtig_return.MReturnValue:
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot set parameter in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot set parameter in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.parameters.identifiers)
     for i in range(ids_length):
@@ -141,8 +144,8 @@ def parse_set_parameter(message) -> dtig_return.MReturnValue:
 
 # @parse(get_parameter)
 def parse_get_parameter(message) -> dtig_return.MReturnValue:
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get parameter in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get parameter in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.parameters.identifiers)
     return_message = # @>callback(get_parameter)(message.parameters.identifiers)
@@ -154,29 +157,33 @@ def parse_get_parameter(message) -> dtig_return.MReturnValue:
 
 # @parse(advance)
 def parse_advance(message) -> Message:
-    if self.state != State.STEPPING:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot advance in state {self.state.name}')
+    if self.state != dtig_state.WAITING:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot advance in state {dtig_state.EState.Name(self.state)}')
 
     return # @>callback(advance)(message)
 
 # @parse(initialize)
 def parse_initialize(message) -> Message:
-    if self.state != State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {self.state.name}')
+    if self.state != dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
 
     ret = # @>callback(initialize)(message)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
-    self.state = State.INITIALIZING
+    self.state = dtig_state.INITIALIZED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
 # @parse(model_info)
 def parse_model_info() -> Message:
-    if self.state == State.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get model info in state {self.state.name}')
+    if self.state == dtig_state.UNINITIALIZED:
+        return self.return_code(dtig_code.INVALID_STATE, f'Cannot get model info in state {dtig_state.EState.Name(self.state)}')
 
     return # @>callback(model_info)()
+
+# @parse(get_status)
+def parse_get_status() -> Message:
+    return # @>callback(get_status)()
 
 # @messagehandler
 def parse_message(self, data : str) -> Message:
@@ -203,6 +210,8 @@ def parse_message(self, data : str) -> Message:
         return # @>parse(set_parameter)(message.set_parameter)
     elif message.HasField("get_parameter"):
         return # @>parse(get_parameter)(message.get_parameter)
+    elif message.HasField("get_status"):
+        return # @>parse(get_status)()
     else:
         return # @>parse(model_info)()
 
@@ -234,7 +243,7 @@ def create_connection(self) -> bool:
 def run_server(self) -> None:
     sock, addr = self.server.accept()
     with sock:
-        print(f"{addr} connected in state {self.state.name}")
+        print(f"{addr} connected in state {dtig_state.EState.Name(self.state)}")
         try:
             while True:
                 # Wait for client command
@@ -246,17 +255,10 @@ def run_server(self) -> None:
                 # Parse client command
                 with self.condition:
                     reply: bytes = # @>messagehandler(data).SerializeToString()
-                    # Is this always desired
-                    # On step, we wait until the step is complete before replying
-                    if not self.step:
-                        sock.sendall(reply)
-                        self.condition.notify_all()
-                    else:
-                        self.condition.notify_all()
-                        self.condition.wait_for(lambda: not self.step or self.state == State.STOPPED)
-                        sock.sendall(reply)
+                    sock.sendall(reply)
+                    self.condition.notify_all()
 
-                    if self.state == State.STOPPED:
+                    if self.state == dtig_state.STOPPED:
                         break
 
         except Exception as e:
@@ -266,7 +268,7 @@ def run_server(self) -> None:
 
         with self.condition:
             self.step = True
-            self.state = State.STOPPED
+            self.state = dtig_state.STOPPED
             self.condition.notify_all()
 
 # @main
@@ -284,14 +286,6 @@ if __name__ == "__main__":
 # @states
 HOST = "127.0.0.1"
 PORT = 8080
-
-class State(Enum):
-    UNINITIALIZED = 1
-    INITIALIZING = 2
-    IDLE = 3
-    RUNNING = 4
-    STEPPING = 5
-    STOPPED = 6
 
 # @callback(initialize)
 def initialize_callback(message) -> Message:
@@ -328,3 +322,7 @@ def set_parameter_callback() -> Message:
 # @callback(get_parameter)
 def get_parameter_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support get_parameter call')
+
+# @callback(get_status)
+def get_status_callback() -> Message:
+    return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support get_status call')

@@ -8,7 +8,9 @@
 #include <codecvt>
 #include <memory>
 
-#include <string.h>
+#include <chrono>
+#include <string>
+#include <thread>
 
 #include "// @>ambassador_header"
 
@@ -18,7 +20,9 @@
 #include "dtig/advance.pb.h"
 #include "dtig/start.pb.h"
 #include "dtig/stop.pb.h"
+#include "dtig/state.pb.h"
 #include "dtig/output.pb.h"
+#include "dtig/get_status.pb.h"
 #include "dtig/parameter.pb.h"
 
 #define MSG_SIZE 1024
@@ -28,7 +32,7 @@
 using namespace std;
 using namespace rti1516;
 
-static const double STEP = 0.01;
+static const double STEP = 0.001;
 
 // @classname
 HLAFederate
@@ -139,7 +143,8 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   dtig::MStart startMessage;
   startMessage.mutable_start_time()->set_value(0.0f);
   startMessage.mutable_stop_time()->set_value(5.0f);
-  startMessage.set_run_mode(dtig::Run::STEP);
+  startMessage.mutable_step_size()->set_step(STEP);
+  startMessage.set_run_mode(dtig::Run::STEPPED);
   *sMessage.mutable_start() = startMessage;
 
   auto startRet = SendMessage(sMessage);
@@ -169,11 +174,24 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   advanceMessage.mutable_step_size()->set_step(STEP);
   *aMessage.mutable_advance() = advanceMessage;
 
+  dtig::MDTMessage statusMessage;
+  dtig::MGetStatus getStatus;
+  getStatus.set_request(true);
+  *statusMessage.mutable_get_status() = getStatus;
+
   while (true)
   {
+    // Wait until model is ready to advance
+    dtig::MReturnValue ret;
+    do
+    {
+      ret = SendMessage(statusMessage);
+      std::this_thread::sleep_for(std::chrono::microseconds(20));
+    } while (ret.has_status() && ret.status().state() == dtig::State::EState::RUNNING);
+
     // @>callback(get_output)();
 
-    auto ret = SendMessage(aMessage);
+    ret = SendMessage(aMessage);
     if (ret.code() == dtig::ReturnCode::INVALID_STATE)
     {
       std::cout << "Stopped" << std::endl;
@@ -184,6 +202,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     std::cout << "Time Advanced to " << fedamb->federateTime << std::endl;
   }
 
+  std::cout << "Simulation done: " << fedamb->federateTime << std::endl;
   waitForUser();
 
   dtig::MDTMessage stMessage;
@@ -371,23 +390,12 @@ int main(int argc, char *argv[])
   }
 
   int child_status;
-  pid_t childPid = fork();
+  pid_t childPid = 1; // fork();
 
-  if (childPid == 0)
-  {
-    char* args[] = {"// @>server_cmd", "// @>server_path", port, NULL};
-
-    // Start server
-    if (execvp("// @>server_cmd", args) < 0)
-    {
-      std::cout << "Failed to start server" << std::endl;
-      return -1;
-    }
-  }
-  else if (childPid > 0)
+  if (childPid > 0)
   {
     // Give some time for the server to start
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
 
     if (name && fom)
     {

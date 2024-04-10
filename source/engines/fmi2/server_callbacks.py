@@ -8,8 +8,6 @@ import numpy as np
 
 # @callback(constructor)
 # Engine specific members
-self.step       : bool   = False
-
 self.start_time : float  = 0.0
 self.stop_time  : float  = 10.0
 self.step_size  : float  = 1e-3
@@ -24,23 +22,8 @@ def parse_initialize(message) -> Message:
     if message.HasField("model_name"):
         self.model_name = message.model_name.value
     else:
-        return self.return_code(dtig_code.UNKNOWN_OPTION, f'No model provided')
+        return self.return_code(dtig_code.INVALID_OPTION, f'No model provided')
 
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
-
-# @callback(advance)
-def parse_advance(self, message) -> Message:
-    if message.HasField("step_size"):
-        self.step_size = message.step_size.step
-
-    self.step = True
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
-
-# @callback(stop)
-def parse_stop(message) -> Message:
-    print(f'Stopping with: {message.mode}')
-    self.step = True
-    self.state = State.STOPPED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
 # @callback(start)
@@ -56,17 +39,29 @@ def parse_start(message) -> Message:
         self.step_size = message.step_size.step
 
     # For now, we accept either continuous or stepped simulation
-    if message.run_mode == dtig_run_mode.CONTINUOUS:
-        self.state = State.RUNNING
-    elif message.run_mode == dtig_run_mode.STEP:
-        self.state = State.STEPPING
-    else:
+    if message.run_mode == dtig_run_mode.UNKNOWN:
         return self.return_code(dtig_code.INVALID_OPTION, f'Unknown run mode: {message.run_mode}')
 
-    print(f'Starting with: {dtig_run_mode.ERunMode.Name(message.run_mode)}.')
+    self.mode = message.run_mode
+    self.state = dtig_state.WAITING if self.mode == dtig_run_mode.STEPPED else dtig_state.RUNNING
+
+    print(f'Starting with: {dtig_run_mode.ERunMode.Name(self.mode)}.')
     print(f'Running from {self.start_time:0.4f} to {self.stop_time:0.4f} with {self.step_size:0.4f}')
 
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+
+# @callback(stop)
+def parse_stop(message) -> Message:
+    print(f'Stopping with: {message.mode}')
+    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+
+# @callback(advance)
+def parse_advance(self, message) -> Message:
+    if message.HasField("step_size"):
+        self.step_size = message.step_size.step
+
+    self.state = dtig_state.RUNNING
+    return self.return_code(dtig_code.SUCCESS)
 
 # @callback(model_info)
 def parse_model_info() -> Message:
@@ -86,14 +81,20 @@ def parse_model_info() -> Message:
 
     return return_value
 
+# @callback(get_status)
+def parse_model_info() -> Message:
+    return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    return_value.status.state = self.state
+    return return_value
+
 # @method(public)
 def variable_to_info(variable):
     info = dtig_info.MInfo()
     if variable.valueReference:
         info.id.value = variable.valueReference
 
-    if variable.name:
-        info.name.value = variable.name
+    if variable:
+        info.value = variable
 
     if variable.type:
         info.type.value = variable.type
@@ -106,8 +107,8 @@ def variable_to_info(variable):
 # @callback(runmodel)
 def run_model() -> None:
     with self.condition:
-        self.condition.wait_for(lambda: self.state == State.INITIALIZING or self.state == State.STOPPED)
-        if self.state == State.STOPPED:
+        self.condition.wait_for(lambda: self.state == dtig_state.INITIALIZED or self.state == dtig_state.STOPPED)
+        if self.state == dtig_state.STOPPED:
             return
 
     print(f'Initializing FMU: {self.model_name}')
@@ -138,14 +139,14 @@ def run_model() -> None:
     time : float = self.start_time
 
     with self.condition:
-        self.condition.wait_for(lambda: self.state == State.STEPPING or self.state == State.RUNNING or self.state == State.STOPPED)
+        self.condition.wait_for(lambda: self.mode != dtig_run_mode.UNKNOWN or self.state == dtig_state.STOPPED)
 
-    print(f'Running with state: {self.state.name}')
+    print(f'Running with state: {self.state}')
     # simulation loop
-    while time < self.stop_time and self.state != State.STOPPED:
+    while time < self.stop_time and self.state != dtig_state.STOPPED:
         with self.condition:
-            if self.state == State.STEPPING:
-                self.condition.wait_for(lambda: self.step)
+            if self.mode == dtig_run_mode.STEPPED:
+                self.condition.wait_for(lambda: self.state == dtig_state.RUNNING or self.state == dtig_state.STOPPED)
                 print(f'Step: {time:0.4f} out of {self.stop_time:0.4f}')
 
         # perform one step
@@ -158,14 +159,14 @@ def run_model() -> None:
         rows.append((time, *outputs))
 
         with self.condition:
-            self.step = False
-            self.condition.notify_all()
+            if self.mode == dtig_run_mode.STEPPED and self.state != dtig_state.STOPPED:
+                self.state = dtig_state.WAITING
 
     print(f'FMU simulation done')
 
     with self.condition:
-        if self.state != State.STOPPED:
-            self.state = State.IDLE
+        if self.state != dtig_state.STOPPED:
+            self.state = dtig_state.IDLE
 
     if len(rows) > 0:
         # convert the results to a structured NumPy array
@@ -174,7 +175,7 @@ def run_model() -> None:
 
 
     with self.condition:
-        self.condition.wait_for(lambda: self.state == State.STOPPED)
+        self.condition.wait_for(lambda: self.state == dtig_state.STOPPED)
 
     self.fmu.terminate()
     self.fmu.freeInstance()

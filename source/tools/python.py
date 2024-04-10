@@ -86,6 +86,7 @@ def create_structure():
     structure[KEY_PARSE][KEY_GET_OUTPUT][KEY_NAME]          = "dtig_get_output"
     structure[KEY_PARSE][KEY_INITIALIZE][KEY_NAME]          = "dtig_initialize"
     structure[KEY_PARSE][KEY_MODEL_INFO][KEY_NAME]          = "dtig_model_info"
+    structure[KEY_PARSE][KEY_GET_STATUS][KEY_NAME]          = "dtig_get_status"
     structure[KEY_PARSE][KEY_SET_PARAMETER][KEY_NAME]       = "dtig_set_parameter"
     structure[KEY_PARSE][KEY_GET_PARAMETER][KEY_NAME]       = "dtig_get_parameter"
 
@@ -103,6 +104,7 @@ def create_structure():
     structure[KEY_CALLBACK][KEY_GET_OUTPUT][KEY_NAME]       = "dtig_engine_get_output"
     structure[KEY_CALLBACK][KEY_INITIALIZE][KEY_NAME]       = "dtig_engine_initialize"
     structure[KEY_CALLBACK][KEY_MODEL_INFO][KEY_NAME]       = "dtig_engine_model_info"
+    structure[KEY_CALLBACK][KEY_GET_STATUS][KEY_NAME]       = "dtig_engine_get_status"
     structure[KEY_CALLBACK][KEY_SET_PARAMETER][KEY_NAME]    = "dtig_engine_set_parameter"
     structure[KEY_CALLBACK][KEY_GET_PARAMETER][KEY_NAME]    = "dtig_engine_get_parameter"
 

@@ -44,6 +44,7 @@ KEY_GET_PARAMETER = "get_parameter"
 KEY_ADVANCE = "advance"
 KEY_INITIALIZE = "initialize"
 KEY_MODEL_INFO = "model_info"
+KEY_GET_STATUS = "get_status"
 KEY_BODY = "body"
 KEY_SELF = "self"
 KEY_MEMBER = "member"
@@ -70,4 +71,4 @@ TYPE_UINT_64    = "uint64"
 TYPE_FLOAT_32   = "float32"
 TYPE_FLOAT_64   = "float64"
 
-NUMBER_OF_MESSAGES = 10
+NUMBER_OF_MESSAGES = 11
