@@ -14,17 +14,15 @@
       "id": 3,
       "name": "h",
       "description": "Height of the ball",
-      "type": "float",
-      "unit": "m",
-      "namespace": "InteractionRoot.Inputs"
+      "type": "float64",
+      "unit": "m"
     },
     {
       "id": 4,
       "name": "v",
       "description": "Velocity of the ball",
-      "type": "float",
-      "unit": "m/s",
-      "namespace": "InteractionRoot.Inputs"
+      "type": "float64",
+      "unit": "m/s"
     }
   ],
   "outputs": [
@@ -32,17 +30,15 @@
       "id": 0,
       "name": "h",
       "description": "Height of the ball",
-      "type": "float",
-      "unit": "m",
-      "namespace": "InteractionRoot.Outputs"
+      "type": "float64",
+      "unit": "m"
     },
     {
       "id": 1,
       "name": "v",
       "description": "Velocity of the ball",
-      "type": "float",
-      "unit": "m/s",
-      "namespace": "InteractionRoot.Outputs"
+      "type": "float64",
+      "unit": "m/s"
     }
   ],
   "parameters": [
@@ -50,16 +46,14 @@
       "id": 0,
       "name": "g",
       "description": "Gravity",
-      "type": "float",
-      "unit": "m/s^2",
-      "namespace": "ObjectRoot.Parameters"
+      "type": "float64",
+      "unit": "m/s^2"
     },
     {
       "id": 1,
       "name": "e",
       "description": "Coefficient of restitution",
-      "type": "float",
-      "namespace": "ObjectRoot.Parameters"
+      "type": "float64"
     }
   ]
 }
