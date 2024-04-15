@@ -55,6 +55,8 @@ KEY_INHERIT="inherit"
 KEY_PUBLISH="publish"
 KEY_SUBSCRIBE="subscribe"
 KEY_NAMESPACE="namespace"
+KEY_DEFAULT="default"
+KEY_MODIFIER="modifier"
 
 # Data types
 TYPE_BOOL       = "bool"
@@ -70,5 +72,11 @@ TYPE_UINT_32    = "uint32"
 TYPE_UINT_64    = "uint64"
 TYPE_FLOAT_32   = "float32"
 TYPE_FLOAT_64   = "float64"
+
+# FEM types
+TYPE_FORCE = "force"
+TYPE_FIXTURE = "fixture"
+TYPE_MESH = "mesh"
+TYPE_SOLID = "solid"
 
 NUMBER_OF_MESSAGES = 11

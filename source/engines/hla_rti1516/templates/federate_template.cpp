@@ -32,7 +32,8 @@
 using namespace std;
 using namespace rti1516;
 
-static const double STEP = 0.001;
+static const double STEP = 0.02;
+static const double STOP_TIME = 5.0;
 
 // @classname
 HLAFederate
@@ -118,7 +119,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
 
   dtig::MDTMessage message;
   dtig::MInitialize initializeMessage;
-  initializeMessage.mutable_model_name()->set_value("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/fmi/BouncingBall.fmu");
+  initializeMessage.mutable_model_name()->set_value("BouncingBall");
   *message.mutable_initialize() = initializeMessage;
 
   auto initRet = SendMessage(message);
@@ -142,7 +143,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   dtig::MDTMessage sMessage;
   dtig::MStart startMessage;
   startMessage.mutable_start_time()->set_value(0.0f);
-  startMessage.mutable_stop_time()->set_value(5.0f);
+  startMessage.mutable_stop_time()->set_value(STOP_TIME);
   startMessage.mutable_step_size()->set_step(STEP);
   startMessage.set_run_mode(dtig::Run::STEPPED);
   *sMessage.mutable_start() = startMessage;
@@ -153,6 +154,22 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     std::cout << "Failed to start: " << initRet.error_message().value() << std::endl;
     return;
   }
+
+  dtig::MDTMessage statusMessage;
+  dtig::MGetStatus getStatus;
+  getStatus.set_request(true);
+  *statusMessage.mutable_get_status() = getStatus;
+
+  std::cout << "Waiting for model to start" << std::endl;
+  dtig::MReturnValue ret;
+  do
+  {
+    ret = SendMessage(statusMessage);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  } while (ret.has_status() &&
+           ret.status().state() != dtig::State::EState::RUNNING &&
+           ret.status().state() != dtig::State::EState::WAITING &&
+           ret.status().state() != dtig::State::EState::STOPPED);
 
   rtiamb->synchronizationPointAchieved(convertStringToWstring(READY_TO_RUN));
   std::cout << "Achieved sync point: " << READY_TO_RUN << ", waiting for federation..." << std::endl;
@@ -174,12 +191,8 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   advanceMessage.mutable_step_size()->set_step(STEP);
   *aMessage.mutable_advance() = advanceMessage;
 
-  dtig::MDTMessage statusMessage;
-  dtig::MGetStatus getStatus;
-  getStatus.set_request(true);
-  *statusMessage.mutable_get_status() = getStatus;
-
-  while (true)
+  std::cout << "Starting loop" << std::endl;
+  while (fedamb->federateTime < STOP_TIME)
   {
     // Wait until model is ready to advance
     dtig::MReturnValue ret;
@@ -192,9 +205,9 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     // @>callback(get_output)();
 
     ret = SendMessage(aMessage);
-    if (ret.code() == dtig::ReturnCode::INVALID_STATE)
+    if (ret.code() != dtig::ReturnCode::SUCCESS)
     {
-      std::cout << "Stopped" << std::endl;
+      std::cout << "Stopped: " << ret.error_message().value() << std::endl;
       break;
     }
 

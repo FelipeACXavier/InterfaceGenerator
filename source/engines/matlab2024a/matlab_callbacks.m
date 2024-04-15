@@ -1,10 +1,10 @@
 % @callback(initialize)
 function returnValue = initialize_callback(message)
   global status;
-  global model_name;
+  global modelName;
 
   if message.hasModelName()
-    modelName = message.getModelName().getValue();
+    modelName = string(message.getModelName().getValue());
     returnValue = createReturn(dtig.EReturnCode.SUCCESS);
   else
     returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, "No model provided");
@@ -30,7 +30,7 @@ function returnValue = parse_start(message)
 
   % For now, we accept either continuous or stepped simulation
   status.mode = message.getRunMode();
-  status.state = dtig.EState.RUNNING;
+  status.state = dtig.EState.IDLE;
 
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
@@ -66,8 +66,6 @@ function run_model()
   global h v;
   global startTime stopTime stepSize;
 
-  disp("Waiting for initialization");
-  waitfor(status, "state", dtig.EState.INITIALIZED);
   % Parameters
   g = 9.81;
   e = 0.7;
@@ -77,10 +75,12 @@ function run_model()
   v = 0;
 
   disp("Waiting for start");
-  waitfor(status, "state", dtig.EState.RUNNING);
+  waitfor(status, "state", dtig.EState.IDLE);
 
   if status.mode == dtig.ERunMode.STEPPED
     status.state = dtig.EState.WAITING;
+  else
+    status.state = dtig.EState.RUNNING;
   end
 
   fprintf("Starting with: %s\n", string(status.state));

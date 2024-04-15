@@ -112,6 +112,11 @@ class ServerGenerator(GeneratorBase):
             data = python.read_file(self.engine_template_file)
 
             result = self.parse_template(
+                data, KEY_CLASS_NAME, has_argument=False, maximum=1)
+            if not result.is_success():
+                return VoidResult.failed(f'Failed to read classname: {result}')
+
+            result = self.parse_template(
                 data, KEY_CALLBACK, has_argument=True, maximum=None)
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read callback file: {result}')

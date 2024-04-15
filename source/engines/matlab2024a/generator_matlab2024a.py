@@ -13,7 +13,7 @@ from interface.matlab_generator import ServerGenerator
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
 
-class ServerGeneratorMatlab2023b(ServerGenerator):
+class ServerGeneratorMatlab2024a(ServerGenerator):
     def __init__(self, output_file):
         super().__init__(output_file)
         self.output_file = output_file + "_server.m"
@@ -25,9 +25,9 @@ class ServerGeneratorMatlab2023b(ServerGenerator):
         template_dir = f'{Path(self.output_file).parent.absolute()}/templates'
         file_system.create_dir(template_dir)
 
-        self.engine_template_file = f'{template_dir}/server_callbacks.m'
+        self.engine_template_file = f'{template_dir}/matlab_callbacks.m'
 
-        self.generate_model_config(engine_folder + "/server_callbacks.m")
+        self.generate_model_config(engine_folder + "/matlab_callbacks.m")
 
         return super().generate(config)
 

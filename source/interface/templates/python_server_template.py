@@ -30,7 +30,7 @@ from google.protobuf.message import Message
 from google.protobuf.message import DecodeError
 
 # @classname
-FMI2Wrapper
+PythonWrapper
 
 # @constructor(public)
 def __init__(self):
@@ -119,9 +119,9 @@ def parse_get_output(message) -> dtig_return.MReturnValue:
 
     ids_length = len(message.outputs.identifiers)
     return_message = # @>callback(get_output)(message.outputs.identifiers)
-    if len(return_message.values.identifiers) != ids_length and return_message.code != dtig_code.SUCCESS:
+    if len(return_message.values.identifiers) != ids_length and return_message.code == dtig_code.SUCCESS:
         return_message.code = dtig_code.FAILURE
-        return_message.error_message = 'Failed to get all outputs'
+        return_message.error_message.value = 'Failed to get all outputs'
 
     return return_message
 
@@ -149,9 +149,9 @@ def parse_get_parameter(message) -> dtig_return.MReturnValue:
 
     ids_length = len(message.parameters.identifiers)
     return_message = # @>callback(get_parameter)(message.parameters.identifiers)
-    if len(return_message.values.identifiers) != ids_length and return_message.code != dtig_code.SUCCESS:
+    if len(return_message.values.identifiers) != ids_length and return_message.code == dtig_code.SUCCESS:
         return_message.code = dtig_code.FAILURE
-        return_message.error_message = 'Failed to get all outputs'
+        return_message.error_message.value = 'Failed to get all outputs'
 
     return return_message
 

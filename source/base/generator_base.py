@@ -212,7 +212,7 @@ class GeneratorBase():
 
     def generate_main(self) -> Result:
         if self.callbacks[KEY_MAIN][KEY_BODY]:
-            return Result(self.callbacks[KEY_MAIN][KEY_BODY])
+            return Result("\n" + self.callbacks[KEY_MAIN][KEY_BODY])
 
         return Result("")
 

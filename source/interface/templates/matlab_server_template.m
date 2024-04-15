@@ -10,11 +10,11 @@ javaaddpath('./build');
 import Status.*;
 
 % Define global variables
-global startTime stopTime stepSize;
 global status modelName;
+global startTime stopTime stepSize simulationTime;
 
 startTime = 0.0;
-stopTime = 5.0;
+stopTime = 0.0;
 stepSize = 0.001;
 
 status = Status;
@@ -56,13 +56,14 @@ end
 % ======================================================================
 server = tcpserver("127.0.0.1", 8080, "ConnectionChangedFcn", @connectionFcn);
 
-configureCallback(server, "byte", 5, @readByteFcn);
-
-% start running in parallel
-% start(dtig.ServerThread("127.0.0.1", 8080));
+configureCallback(server, "byte", 4, @readByteFcn);
 
 try
   disp("Server is running");
+
+  disp("Waiting for initialization");
+  waitfor(status, "state", dtig.EState.INITIALIZED);
+
   % @>runmodel();
 
   disp("Model done, waiting for stop");

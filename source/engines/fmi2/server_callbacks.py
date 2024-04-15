@@ -6,6 +6,9 @@ from fmpy.util import plot_result
 import shutil
 import numpy as np
 
+# @classname
+FMI2Wrapper
+
 # @callback(constructor)
 # Engine specific members
 self.start_time : float  = 0.0
@@ -15,7 +18,6 @@ self.step_size  : float  = 1e-3
 self.fmu = None
 self.model_name = None
 self.value_references = {}
-
 
 # @callback(initialize)
 def parse_initialize(message) -> Message:

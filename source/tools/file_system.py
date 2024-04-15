@@ -83,3 +83,10 @@ def exists(file_name):
 
 def is_directory_empty(dir_name):
     return not os.path.isdir(dir_name) or not os.listdir(dir_name)
+
+def current_dir():
+    return os.getcwd()
+
+def remove_file(file):
+    if exists(file):
+        os.remove(file)

@@ -68,6 +68,14 @@ def to_proto_message(variable_type):
         return f'dtig_utils.MBool()'
     elif variable_type == TYPE_BYTES:
         return f'dtig_utils.MBytes()'
+    elif variable_type == TYPE_FIXTURE:
+        return f'dtig_utils.MConstraint()'
+    elif variable_type == TYPE_FORCE:
+        return f'dtig_utils.MConstraint()'
+    elif variable_type == TYPE_SOLID:
+        return f'dtig_utils.MMaterial()'
+    elif variable_type == TYPE_MESH:
+        return f'dtig_utils.MString()'
 
 def create_structure():
     structure = create_default_structure()
