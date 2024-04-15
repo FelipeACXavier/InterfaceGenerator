@@ -104,12 +104,12 @@ def main():
 
         client_generator.set_client_info("python", server_generator.get_output_file())
 
-    elif config[KEY_SERVER] == ENGINE_MATLAB_2023b:
+    elif config[KEY_SERVER] == ENGINE_MATLAB_2024a:
         # Engine specific import
-        from engines.matlab2023b.generator_matlab2023b import ServerGeneratorMatlab2023b
+        from engines.matlab2024a.generator_matlab2024a import ServerGeneratorMatlab2024a
 
-        server_name = ENGINE_MATLAB_2023b
-        server_generator = ServerGeneratorMatlab2023b(output_dir + server_name)
+        server_name = ENGINE_MATLAB_2024a
+        server_generator = ServerGeneratorMatlab2024a(output_dir + server_name)
 
         # Generate protobuf for matlab
         result = protobuf.generate_matlab(output_dir)
@@ -136,6 +136,37 @@ def main():
 
         # client_generator.set_client_info("python", server_generator.get_output_file())
 
+    elif config[KEY_SERVER] == ENGINE_SIMULINK_2024a:
+        # Engine specific import
+        from engines.matlab2024a.generator_simulink2024a import ServerGeneratorSimulink2024a
+
+        server_name = ENGINE_SIMULINK_2024a
+        server_generator = ServerGeneratorSimulink2024a(output_dir + server_name)
+
+        # Generate protobuf for matlab
+        result = protobuf.generate_matlab(output_dir)
+        if not result.is_success():
+            LOG_ERROR(result)
+            return
+
+        java_compiler = javac.JavaCompiler(output_dir)
+        java_compiler.set_compiler(f'{output_dir}/java-compiler/bin/javac')
+        java_compiler.add_source("dtig/*.java")
+        java_compiler.add_library_dir("protobuf-java-3.20.3.jar")
+
+        generated = java_compiler.generate()
+        if not generated:
+            LOG_ERROR(f'Failed to generated java compiler file: {generated}')
+
+        installed = java_compiler.install("8u402-b06")
+        if not installed:
+            LOG_ERROR(f'Failed to install java compiler: {installed}')
+
+        compiled = java_compiler.compile()
+        if not compiled:
+            LOG_ERROR(f'Javac failed to compile file: {compiled}')
+
+        # client_generator.set_client_info("python", server_generator.get_output_file())
     if server_generator:
         server_result = server_generator.generate(config)
         if not server_result.is_success():

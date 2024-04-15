@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "formalism": "continuous",
   "client": "hla_rti1516",
-  "server": "matlab2023b",
+  "server": "simulink2024a",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
