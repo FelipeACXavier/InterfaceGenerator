@@ -1,0 +1,51 @@
+{
+  "name": "Beam",
+  "description": "A simple cantilever beam",
+  "authors": "Author's name",
+  "version": "1.0.0",
+  "formalism": "fem",
+  "server": "freecad021",
+  "step": 1000,
+  "minimumstep": 100,
+  "lookahead": 5000,
+  "superdensetime": false,
+  "inputs": [
+  ],
+  "outputs": [
+    {
+      "id": 0,
+      "name": "Mesh",
+      "description": "Resulting mesh after applying forces on the beam",
+      "type": "mesh",
+      "default": "Result.obj"
+    },
+    {
+      "id": 1,
+      "name": "vonMises",
+      "description": "Maximum von Mises stress",
+      "type": "float64",
+      "modifier": "max"
+    },
+    {
+      "id": 2,
+      "name": "DisplacementLengths",
+      "description": "Maximum displacement",
+      "type": "float64",
+      "modifier": "max"
+    }
+  ],
+  "parameters": [
+    {
+      "id": 0,
+      "name": "Material",
+      "description": "Material of the beam",
+      "type": "solid"
+    },
+    {
+      "id": 1,
+      "name": "Fixture",
+      "description": "Beam fixture",
+      "type": "fixture"
+    }
+  ]
+}
