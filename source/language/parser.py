@@ -1,0 +1,503 @@
+import re
+
+from common.keys import *
+from common.logging import *
+
+from language.lexer import Lexer
+from language.lexer_tokens import Type
+from lark import Lark, Transformer, v_args
+
+from common.json_configuration import JsonConfiguration
+
+lark_grammar= r"""
+    ?start: test    -> program
+
+    ?test: or_test
+    ?or_test: and_test ("OR" and_test)*
+    ?and_test: not_test_ ("AND" not_test_)*
+    ?not_test_: "NOT" not_test_ -> not_test
+            | comparison
+
+    ?comparison: expr (comp_op expr)*
+
+    ?expr: arith_expr
+    ?arith_expr: term (_add_op term)*
+    ?term: factor (_mul_op factor)*
+    ?factor: _unary_op factor | atom
+
+    ?atom: NAME     -> var
+        | NUMBER
+        | "(" test ")"
+        | "NONE"    -> const_none
+        | "DTIG_TRUE"    -> const_true
+        | "DTIG_FALSE"   -> const_false
+
+    !_unary_op: "+"|"-"|"~"
+    !_add_op: "+"|"-"
+    !_mul_op: "*"|"/"|"%"
+
+    !comp_op: "<"|">"|"=="|">="|"<="|"!="|"in"|"not" "in"|"is"|"is" "not"
+
+    %import common.CNAME                -> NAME
+    %import common.SIGNED_NUMBER        -> NUMBER
+    %import common.NEWLINE
+    %import common.WS
+    %ignore WS
+    %ignore NEWLINE
+"""
+
+@v_args(inline=True)    # Affects the signatures of the methods
+class CalculateCondition(Transformer):
+    from operator import add, sub, mul, truediv as div, neg
+    number = float
+
+    def __init__(self, config, variable_callback):
+        self.config = config
+        self.get_variable = variable_callback
+
+    def program(self, tree):
+        LOG_TRACE(f'tree: {tree}')
+        return tree
+
+    def or_test(self, left, right):
+        LOG_TRACE(f'{left} or {right}')
+        return left or right
+
+    def and_test(self, left, right):
+        LOG_TRACE(f'{left} and {right}')
+        return left and right
+
+    def not_test(self, left):
+        LOG_TRACE(f'not {left}')
+        return not left
+
+    def comparison(self, left, op, right):
+        LOG_TRACE(f'{left} {op} {right}')
+        if op == "<":
+            return left < right
+        elif op == ">":
+            return left > right
+        elif op == "==":
+            return left == right
+        elif op == ">=":
+            return left >= right
+        elif op == "<=":
+            return left <= right
+        elif op == "!=":
+            return left != right
+        elif op == "in":
+            return left in right
+        elif op == "not in":
+            return left not in right
+        elif op == "is":
+            return left is right
+        elif op == "is not":
+            return left is not right
+        else:
+            raise Exception(f"Unknown operator: {op}")
+
+    def arith_expr(self, left, op, right):
+        LOG_TRACE(f'{left} {op} {right}')
+        if op == "+":
+            return left + right
+        elif op == "-":
+            return left - right
+        elif op == "*":
+            return left * right
+        elif op == "/":
+            return left / right
+        elif op == "%":
+            return left % right
+        else:
+            raise Exception(f"Unknown arithmetic operator: {op}")
+
+    def var(self, name):
+        LOG_TRACE(f'var: {name}')
+        return self.get_variable(name)
+
+    def NUMBER(self, n):
+        LOG_TRACE(f'num: {n}')
+        try:
+            return int(n)
+        except:
+            raise Exception(f'Only integers are supported: {n}')
+
+    def comp_op(self, op):
+        return op
+
+    def const_true(self):
+        return True
+
+    def const_false(self):
+        return False
+
+class Parser:
+    def __init__(self, config):
+        self.cfg = config
+        self.item = None
+        self.item_index = 0
+
+        self.index = 0
+        self.if_level = 0
+        self.for_level = 0
+        self.contents = None
+        self.else_flag = False
+
+        self.to_proto_message = None
+        self.type_to_function = None
+
+        self.vars = dict()
+
+        self.lark = Lark(lark_grammar, parser='lalr', transformer=CalculateCondition(self.cfg, self.variable))
+
+    def parse(self, text):
+        # Reset all values before parsing
+        self.item = None
+        self.item_index = 0
+
+        self.index = 0
+        self.if_level = 0
+        self.for_level = 0
+        self.contents = text
+        self.else_flag = False
+
+        # Start from index 0 with no brackets
+        return self.parse_ast(text, 0, 0)
+
+    def parse_ast(self, contents, c_if_level, c_for_level):
+        body = ""
+        iter_body = contents
+        while True:
+            call_match = re.search(fr'(DTIG_[\w\d_]+)', iter_body)
+            if not call_match:
+                body += iter_body.rstrip()
+                break
+
+            call = iter_body[call_match.start():call_match.end()]
+            LOG_TRACE(f'Found: {call}')
+            if call == "DTIG_IF":
+                body += iter_body[:call_match.start()].rstrip()
+                # We are one level deeper now
+                self.if_level += 1
+
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # TODO: Check for success
+                cond_match = re.search(fr'\(.*\)', iter_body)
+                condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                iter_body = iter_body[cond_match.end():]
+                self.index += cond_match.end()
+
+                # Here, we have the entire if body, from start to end
+                if_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                iter_body = self.contents[self.index:]
+
+                else_body = ""
+                if self.else_flag:
+                    self.else_flag = False
+                    else_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                    iter_body = self.contents[self.index:]
+
+                val = self.conditional(condition)
+                if val:
+                    body += if_body.rstrip()
+                else:
+                    body += else_body.rstrip()
+
+            elif call == "DTIG_ELSE":
+                to_replace = iter_body[:call_match.start()].rstrip()
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                self.else_flag = True
+                return body + to_replace
+
+            elif call == "DTIG_END_IF":
+                self.if_level -= 1
+
+                body += iter_body[:call_match.start()].rstrip()
+                self.index += call_match.end()
+
+                if self.if_level == c_if_level - 1:
+                    break
+
+                iter_body = iter_body[call_match.end():]
+
+            elif call == "DTIG_FOR":
+                body += iter_body[:call_match.start()].rstrip()
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # TODO: Check for success
+                cond_match = re.search(fr'\(.*\)', iter_body)
+                condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                iter_body = iter_body[cond_match.end():]
+                self.index += cond_match.end()
+
+                end_index = self.index
+                prev_index = self.index
+                cfg_list = self.conditional(condition)
+                for i, cfg in enumerate(cfg_list):
+                    self.item = cfg
+                    self.item_index = i
+                    self.index = prev_index
+
+                    # We are one level deeper now, needs to be set on every iteration due to END
+                    self.for_level += 1
+
+                    # Here, we have the entire if body, from start to end
+                    body += self.parse_ast(iter_body, self.if_level, self.for_level)
+                    if i == 0:
+                        end_index = self.index
+
+                self.index = end_index
+                iter_body = self.contents[end_index:]
+
+            elif call == "DTIG_END_FOR":
+                self.for_level -= 1
+
+                body += iter_body[:call_match.start()].rstrip()
+                self.index += call_match.end()
+
+                if self.for_level == c_for_level - 1:
+                    break
+
+                iter_body = iter_body[call_match.end():]
+
+            elif call == "DTIG_TO_PROTO_MESSAGE":
+                to_replace = iter_body[:call_match.start()]
+
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # TODO: Check for success
+                cond_match = re.search(fr'\(.*?\)', iter_body)
+                condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                iter_body = iter_body[cond_match.end():]
+                self.index += cond_match.end()
+
+                body += f'{to_replace}{self.to_proto_message(self.variable(condition))}'
+
+            elif call == "DTIG_TYPE_TO_FUNCTION":
+                to_replace = iter_body[:call_match.start()]
+
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # TODO: Check for success
+                cond_match = re.search(fr'\(.*?\)', iter_body)
+                condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                iter_body = iter_body[cond_match.end():]
+                self.index += cond_match.end()
+
+                body += f'{to_replace}{self.type_to_function(self.variable(condition))}'
+
+            elif call == "DTIG_STR":
+                to_replace = iter_body[:call_match.start()]
+
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # TODO: Check for success
+                cond_match = re.search(fr'\(.*?\)', iter_body)
+                condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                iter_body = iter_body[cond_match.end():]
+                self.index += cond_match.end()
+
+                body += f'{to_replace}f\"{self.conditional(condition)}\"'
+
+            else:
+                var = self.variable(call)
+                to_replace = iter_body[:call_match.start()]
+
+                body += f'{to_replace}{var}'
+                iter_body = iter_body[call_match.end():]
+
+                self.index += call_match.end()
+
+        return body
+
+    def conditional(self, contents):
+        result = True
+        iter_body = contents
+        ret = self.lark.parse(contents)
+        return ret
+
+    def variable(self, var):
+        if var == "DTIG_INDEX":
+            return self.item_index
+        elif var == "DTIG_TRUE":
+            return True
+        elif var == "DTIG_FALSE":
+            return False
+        # Item ============================
+        elif var == "DTIG_ITEM":
+            return self.item
+        elif var == "DTIG_ITEM_ID":
+            if self.item and KEY_ID in self.item:
+                return self.item[KEY_ID]
+            return None
+        elif var == "DTIG_ITEM_NAME":
+            if self.item and KEY_NAME in self.item:
+                return self.item[KEY_NAME]
+            return None
+        elif var == "DTIG_ITEM_TYPE":
+            if self.item and KEY_TYPE in self.item:
+                return self.item[KEY_TYPE]
+            return None
+        elif var == "DTIG_ITEM_UNIT":
+            if self.item and KEY_UNIT in self.item:
+                return self.item[KEY_UNIT]
+            return None
+        elif var == "DTIG_ITEM_NAMESPACE":
+            if self.item and KEY_NAMESPACE in self.item:
+                return self.item[KEY_NAMESPACE]
+            return None
+        elif var == "DTIG_ITEM_MODIFIER":
+            if self.item and KEY_MODIFIER in self.item:
+                return self.item[KEY_MODIFIER]
+            return None
+        elif var == "DTIG_ITEM_DESCRIPTION":
+            if self.item and KEY_DESCRIPTION in self.item:
+                return self.item[KEY_DESCRIPTION]
+            return None
+        elif var == "DTIG_ITEM_DEFAULT":
+            if self.item and KEY_DEFAULT in self.item:
+                return self.item[KEY_DEFAULT]
+            return None
+        # Inputs ==========================
+        elif var == "DTIG_INPUTS":
+            if not self.cfg.has(KEY_INPUTS) or not len(self.cfg[KEY_INPUTS]):
+                return self.default_list()
+            return self.cfg[KEY_INPUTS]
+        elif var == "DTIG_INPUTS_LENGTH":
+            if self.cfg.has(KEY_INPUTS):
+                return len(self.cfg[KEY_INPUTS])
+            return 0
+        # Outputs =========================
+        elif var == "DTIG_OUTPUTS":
+            if not self.cfg.has(KEY_OUTPUTS) or not len(self.cfg[KEY_OUTPUTS]):
+                return self.default_list()
+            return self.cfg[KEY_OUTPUTS]
+        elif var == "DTIG_OUTPUTS_LENGTH":
+            if self.cfg.has(KEY_OUTPUTS):
+                return len(self.cfg[KEY_OUTPUTS])
+            return 0
+        # Parameters ======================
+        elif var == "DTIG_PARAMETERS":
+            if not self.cfg.has(KEY_PARAMETERS) or not len(self.cfg[KEY_PARAMETERS]):
+                return self.default_list()
+            return self.cfg[KEY_PARAMETERS]
+        elif var == "DTIG_PARAMETERS_LENGTH":
+            if self.cfg.has(KEY_PARAMETERS):
+                return len(self.cfg[KEY_PARAMETERS])
+            return 0
+        # Variables =======================
+        else:
+            return self.type_to_regex(var)
+
+    def call_to_regex(self, call):
+        if call == "DTIG_NOT":
+            return fr'\((.*)\)'
+        else:
+            return fr'\((.*(?<=,))?(.*)\)'
+
+    def type_to_regex(self, call):
+        if call == "TYPE_BOOL":
+            return TYPE_BOOL
+        elif call == "TYPE_BYTES":
+            return TYPE_BYTES
+        elif call == "TYPE_STRING":
+            return TYPE_STRING
+        elif call == "TYPE_INT_8":
+            return TYPE_INT_8
+        elif call == "TYPE_INT_16":
+            return TYPE_INT_16
+        elif call == "TYPE_INT_32":
+            return TYPE_INT_32
+        elif call == "TYPE_INT_64":
+            return TYPE_INT_64
+        elif call == "TYPE_UINT_8":
+            return TYPE_UINT_8
+        elif call == "TYPE_UINT_16":
+            return TYPE_UINT_16
+        elif call == "TYPE_UINT_32":
+            return TYPE_UINT_32
+        elif call == "TYPE_UINT_64":
+            return TYPE_UINT_64
+        elif call == "TYPE_FLOAT_32":
+            return TYPE_FLOAT_32
+        elif call == "TYPE_FLOAT_64":
+            return TYPE_FLOAT_64
+        elif call == "TYPE_FORCE":
+            return TYPE_FORCE
+        elif call == "TYPE_FIXTURE":
+            return TYPE_FIXTURE
+        elif call == "TYPE_MESH":
+            return TYPE_MESH
+        elif call == "TYPE_SOLID":
+            return TYPE_SOLID
+        else:
+            return self.key_to_regex(call)
+
+    def key_to_regex(self, call):
+        if call == "KEY_ID":
+            return KEY_ID
+        elif call == "KEY_NAME":
+            return KEY_NAME
+        elif call == "KEY_TYPE":
+            return KEY_TYPE
+        elif call == "KEY_UNIT":
+            return KEY_UNIT
+        elif call == "KEY_DEFAULT":
+            return KEY_DEFAULT
+        elif call == "KEY_MODIFIER":
+            return KEY_MODIFIER
+        elif call == "KEY_NAMESPACE":
+            return KEY_NAMESPACE
+        elif call == "KEY_DESCRIPTION":
+            return KEY_DESCRIPTION
+        else:
+            return call
+
+    def default_list(self):
+        return [{
+            KEY_ID: 0,
+            KEY_DESCRIPTION: "Invalid",
+            KEY_TYPE: "Invalid",
+            KEY_DEFAULT: "Invalid",
+            KEY_DESCRIPTION: "Invalid"
+        }]
+
+if __name__ == "__main__":
+    start_logger(LogLevel.TRACE)
+    config = JsonConfiguration()
+    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/freecad/config.json")
+
+    p = Parser(config)
+
+    text = """
+def get_model_info(references):
+    if not self.model_name:
+        return self.return_code(dtig_code.FAILURE, f'Model is not yet known')
+
+    return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    DTIG_FOR(DTIG_INPUTS)
+    info_DTIG_ITEM_NAME = dtig_info.MInfo()
+
+    DTIG_IF(KEY_MODIFIER in DTIG_ITEM)
+    info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
+    DTIG_END_IF
+
+    return_value.model_info.inputs.append(info_DTIG_ITEM_NAME)
+    DTIG_END_FOR
+
+    return return_value
+    """
+    LOG_INFO(p.parse(text))

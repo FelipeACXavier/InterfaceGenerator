@@ -2,7 +2,7 @@ from tools import file_system
 from common.result import *
 from common.logging import *
 
-from lexer_tokens import Location, Token, Type
+from language.lexer_tokens import Location, Token, Type
 
 class Lexer:
     def __init__(self):
