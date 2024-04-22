@@ -1,4 +1,4 @@
-# @imports
+<DTIG_IMPORTS>
 # Basic imports
 import sys
 import socket
@@ -29,10 +29,10 @@ from google.protobuf import any_pb2
 from google.protobuf.message import Message
 from google.protobuf.message import DecodeError
 
-# @classname
+<DTIG_CLASSNAME>
 PythonWrapper
 
-# @constructor(public)
+<DTIG_CONSTRUCTOR(PUBLIC)>
 def __init__(self):
     self.mode = dtig_run_mode.UNKNOWN
     self.state = dtig_state.UNINITIALIZED
@@ -42,18 +42,18 @@ def __init__(self):
     self.condition = threading.Condition(lock=self.lock)
 
     self.server_thread = threading.Thread(
-        target=#@>callback(runserver)
+        target=DTIG>CALLBACK(RUNSERVER)
     )
     self.model_thread = threading.Thread(
-        target=#@>callback(runmodel)
+        target=DTIG>CALLBACK(RUNMODEL)
     )
 
-# @destructor(public)
+<DTIG_DESTRUCTOR(PUBLIC)>
 def __del__(self):
     if self.server is not None:
         self.server.close()
 
-# @run
+<DTIG_RUN>
 def run(self) -> None:
     if not self.create_connection():
         return
@@ -64,29 +64,29 @@ def run(self) -> None:
     self.server_thread.join()
     self.model_thread.join()
 
-# @parse(initialize)
+<DTIG_PARSE(INITIALIZE)>
 def parse_initialize(message) -> Message:
     if self.state != dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
 
-    ret = # @>callback(initialize)
+    ret = DTIG>CALLBACK(INITIALIZE)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
     self.state = dtig_state.INITIALIZED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
-# @parse(start)
+<DTIG_PARSE(START)>
 def parse_start(message) -> Message:
     # If the model was not yet initialized, we cannot start
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot start in state {dtig_state.EState.Name(self.state)}')
 
-    return # @>callback(start)(message)
+    return DTIG>CALLBACK(START)(message)
 
-# @parse(stop)
+<DTIG_PARSE(STOP)>
 def parse_stop(message) -> Message:
-    ret = # @>callback(stop)(message)
+    ret = DTIG>CALLBACK(STOP)(message)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
@@ -94,7 +94,7 @@ def parse_stop(message) -> Message:
     self.state = dtig_state.STOPPED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
-# @parse(set_input)
+<DTIG_PARSE(SET_INPUT)>
 def parse_set_input(message) -> Message:
     # If the model was not yet initialized, we cannot set inputs
     if self.state == dtig_state.UNINITIALIZED:
@@ -106,26 +106,26 @@ def parse_set_input(message) -> Message:
         any_value : any_pb2.Any = message.inputs.values[i]
 
         # Only the model knows the type, unpacking must be a responsibility of the callback function
-        ret = # @>callback(set_input)(identifier, any_value)
+        ret = DTIG>CALLBACK(SET_INPUT)(identifier, any_value)
         if ret.code != dtig_code.SUCCESS:
             return ret
 
     return self.return_code(dtig_code.SUCCESS)
 
-# @parse(get_output)
+<DTIG_PARSE(GET_OUTPUT)>
 def parse_get_output(message) -> dtig_return.MReturnValue:
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot get output in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.outputs.identifiers)
-    return_message = # @>callback(get_output)(message.outputs.identifiers)
+    return_message = DTIG>CALLBACK(GET_OUTPUT)(message.outputs.identifiers)
     if len(return_message.values.identifiers) != ids_length and return_message.code == dtig_code.SUCCESS:
         return_message.code = dtig_code.FAILURE
         return_message.error_message.value = 'Failed to get all outputs'
 
     return return_message
 
-# @parse(set_parameter)
+<DTIG_PARSE(SET_PARAMETER)>
 def parse_set_parameter(message) -> dtig_return.MReturnValue:
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot set parameter in state {dtig_state.EState.Name(self.state)}')
@@ -136,56 +136,56 @@ def parse_set_parameter(message) -> dtig_return.MReturnValue:
         any_value : any_pb2.Any = message.parameters.values[i]
 
         # Only the model knows the type, unpacking must be a responsibility of the callback function
-        ret = # @>callback(set_parameter)(identifier, any_value)
+        ret = DTIG>CALLBACK(SET_PARAMETER)(identifier, any_value)
         if ret.code != dtig_code.SUCCESS:
             return ret
 
     return self.return_code(dtig_code.SUCCESS)
 
-# @parse(get_parameter)
+<DTIG_PARSE(GET_PARAMETER)>
 def parse_get_parameter(message) -> dtig_return.MReturnValue:
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot get parameter in state {dtig_state.EState.Name(self.state)}')
 
     ids_length = len(message.parameters.identifiers)
-    return_message = # @>callback(get_parameter)(message.parameters.identifiers)
+    return_message = DTIG>CALLBACK(GET_PARAMETER)(message.parameters.identifiers)
     if len(return_message.values.identifiers) != ids_length and return_message.code == dtig_code.SUCCESS:
         return_message.code = dtig_code.FAILURE
         return_message.error_message.value = 'Failed to get all outputs'
 
     return return_message
 
-# @parse(advance)
+<DTIG_PARSE(ADVANCE)>
 def parse_advance(message) -> Message:
     if self.state != dtig_state.WAITING:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot advance in state {dtig_state.EState.Name(self.state)}')
 
-    return # @>callback(advance)(message)
+    return DTIG>CALLBACK(ADVANCE)(message)
 
-# @parse(initialize)
+<DTIG_PARSE(INITIALIZE)>
 def parse_initialize(message) -> Message:
     if self.state != dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
 
-    ret = # @>callback(initialize)(message)
+    ret = DTIG>CALLBACK(INITIALIZE)(message)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
     self.state = dtig_state.INITIALIZED
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
-# @parse(model_info)
+<DTIG_PARSE(MODEL_INFO)>
 def parse_model_info() -> Message:
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot get model info in state {dtig_state.EState.Name(self.state)}')
 
-    return # @>callback(model_info)()
+    return DTIG>CALLBACK(MODEL_INFO)()
 
-# @parse(get_status)
+<DTIG_PARSE(GET_STATUS)>
 def parse_get_status() -> Message:
-    return # @>callback(get_status)()
+    return DTIG>CALLBACK(GET_STATUS)()
 
-# @messagehandler
+<DTIG_MESSAGEHANDLER>
 def parse_message(self, data : str) -> Message:
     message = dtig_message.MDTMessage()
     try:
@@ -195,36 +195,36 @@ def parse_message(self, data : str) -> Message:
         return bytes()
 
     if message.HasField("advance"):
-        return # @>parse(advance)(message.advance)
+        return DTIG>PARSE(ADVANCE)(message.advance)
     elif message.HasField("set_input"):
-        return # @>parse(set_input)(message.set_input)
+        return DTIG>PARSE(SET_INPUT)(message.set_input)
     elif message.HasField("get_output"):
-        return # @>parse(get_output)(message.get_output)
+        return DTIG>PARSE(GET_OUTPUT)(message.get_output)
     elif message.HasField("initialize"):
-        return # @>parse(initialize)(message.initialize)
+        return DTIG>PARSE(INITIALIZE)(message.initialize)
     elif message.HasField("start"):
-        return # @>parse(start)(message.start)
+        return DTIG>PARSE(START)(message.start)
     elif message.HasField("stop"):
-        return # @>parse(stop)(message.stop)
+        return DTIG>PARSE(STOP)(message.stop)
     elif message.HasField("set_parameter"):
-        return # @>parse(set_parameter)(message.set_parameter)
+        return DTIG>PARSE(SET_PARAMETER)(message.set_parameter)
     elif message.HasField("get_parameter"):
-        return # @>parse(get_parameter)(message.get_parameter)
+        return DTIG>PARSE(GET_PARAMETER)(message.get_parameter)
     elif message.HasField("get_status"):
-        return # @>parse(get_status)()
+        return DTIG>PARSE(GET_STATUS)()
     else:
-        return # @>parse(model_info)()
+        return DTIG>PARSE(MODEL_INFO)()
 
     return dtig_return.MReturnValue(code=dtig_code.UNKNOWN_COMMAND)
 
-# @method(public)
+<DTIG_METHOD(PUBLIC)>
 def return_code(self, code: dtig_code, message: str = None) -> dtig_return:
     if message is None:
         return dtig_return.MReturnValue(code=code)
 
     return dtig_return.MReturnValue(code=code, error_message=dtig_utils.MString(value=message))
 
-# @method(public)
+<DTIG_METHOD(PUBLIC)>
 def create_connection(self) -> bool:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -239,7 +239,7 @@ def create_connection(self) -> bool:
         print(f'Failed to create socket: {e}')
         return False
 
-# @runserver
+<DTIG_RUNSERVER>
 def run_server(self) -> None:
     sock, addr = self.server.accept()
     with sock:
@@ -254,7 +254,7 @@ def run_server(self) -> None:
 
                 # Parse client command
                 with self.condition:
-                    reply: bytes = # @>messagehandler(data).SerializeToString()
+                    reply: bytes = DTIG>MESSAGEHANDLER(data).SerializeToString()
                     sock.sendall(reply)
                     self.condition.notify_all()
 
@@ -271,7 +271,7 @@ def run_server(self) -> None:
             self.state = dtig_state.STOPPED
             self.condition.notify_all()
 
-# @main
+<DTIG_MAIN>
 if __name__ == "__main__":
     print(sys.argv)
     for i, arg in enumerate(sys.argv):
@@ -280,49 +280,159 @@ if __name__ == "__main__":
         elif arg == "--port":
             PORT = int(sys.argv[i + 1])
 
-    wrapper = # @>classname()
-    wrapper.# @>run()
+    wrapper = DTIG>CLASSNAME()
+    wrapper.DTIG>RUN()
 
-# @states
+<DTIG_STATES>
 HOST = "127.0.0.1"
 PORT = 8080
 
-# @callback(initialize)
+<DTIG_CALLBACK(INITIALIZE)>
 def initialize_callback(message) -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support initialize call')
 
-# @callback(advance)
+<DTIG_CALLBACK(ADVANCE)>
 def advance_callback(self, message) -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support advance call')
 
-# @callback(stop)
+<DTIG_CALLBACK(STOP)>
 def stop_callback(message) -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support stop call')
 
-# @callback(start)
+<DTIG_CALLBACK(START)>
 def start_callback(message) -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support start call')
 
-# @callback(model_info)
-def model_info_callback() -> Message:
-    return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support model_info call')
+<DTIG_CALLBACK(MODEL_INFO)>
+def get_model_info(references):
+    if not self.model_name:
+        return self.return_code(dtig_code.FAILURE, f'Model is not yet known')
 
-# @callback(set_input)
+    return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+
+    # Inputs
+    DTIG_FOR(DTIG_INPUTS)
+    info_DTIG_ITEM_NAME = dtig_info.MInfo()
+
+    DTIG_IF(DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
+    DTIG_END_IF
+
+    return_value.model_info.inputs.append(info_DTIG_ITEM_NAME)
+    DTIG_END_FOR
+
+    # Outputs
+    DTIG_FOR(DTIG_OUTPUTS)
+    info_DTIG_ITEM_NAME = dtig_info.MInfo()
+
+    DTIG_IF(DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
+    DTIG_END_IF
+
+    return_value.model_info.outputs.append(info_DTIG_ITEM_NAME)
+    DTIG_END_FOR
+
+    # Parameters
+    DTIG_FOR(DTIG_PARAMETERS)
+    info_DTIG_ITEM_NAME = dtig_info.MInfo()
+
+    DTIG_IF(DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
+    DTIG_END_IF
+
+    DTIG_IF(DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
+    DTIG_END_IF
+
+    return_value.model_info.outputs.append(info_DTIG_ITEM_NAME)
+    DTIG_END_FOR
+
+    return return_value
+
+<DTIG_CALLBACK(SET_INPUT)>
 def set_input_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support set_input call')
 
-# @callback(get_output)
+<DTIG_CALLBACK(GET_OUTPUT)>
 def get_output_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support get_output call')
 
-# @callback(set_parameter)
+<DTIG_CALLBACK(SET_PARAMETER)>
 def set_parameter_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support set_parameter call')
 
-# @callback(get_parameter)
+<DTIG_CALLBACK(GET_PARAMETER)>
 def get_parameter_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support get_parameter call')
 
-# @callback(get_status)
+<DTIG_CALLBACK(GET_STATUS)>
 def get_status_callback() -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support get_status call')

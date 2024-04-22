@@ -39,7 +39,7 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
             body = f.read() + "\n"
 
         body += self.generate_model_members()
-        # body += self.generate_model_set_input()
+        body += self.generate_model_set_input()
         # body += self.generate_model_get_output()
         # body += self.generate_model_set_parameter()
         # body += self.generate_model_get_parameter()
@@ -77,7 +77,7 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
 
     def generate_model_set_input(self) -> str:
         body = f'\n% @callback({KEY_SET_INPUT})\n'
-        body += "function returnValue = set_inputs(reference, anyValue)\n"
+        body += "function returnValue = set_input(reference, anyValue)\n"
 
         if not self.config.has(KEY_INPUTS) or not len(self.config[KEY_INPUTS]):
             body += f'\treturnValue = createReturn(dtig.EReturnCode.FAILURE, "Model has no inputs");\n'

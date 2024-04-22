@@ -108,6 +108,9 @@ function run_model()
     status.state = dtig.EState.RUNNING;
   end
 
+  % Pause a bit otherwise Simulink fails to start
+  pause(1);
+
   fprintf("Starting with: %s\n", string(status.state));
   fprintf("Running from %.4f to %.4f with step size %.4f\n", startTime, stopTime, stepSize);
 end

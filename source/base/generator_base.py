@@ -25,6 +25,8 @@ class GeneratorBase():
         self.function_definition = None
         self.callbacks = create_default_structure()
 
+        self.dtig_parser = None
+
     def new_callback(self, key, data):
         self.callbacks[KEY_NEW][key] = data
 
@@ -42,11 +44,12 @@ class GeneratorBase():
             return VoidResult.failed("No comment character defined")
 
         # Look for the decorators
-        regex = fr'^{self.comment_char}\s*@({name}\b)(\(([a-z_]*)\))?'
+        # regex = fr'^{self.comment_char}\s*@({name}\b)(\(([a-z_]*)\))?'
+        regex = fr'^<DTIG_({name})\b(\(([A-Z_]*)\))?.*>'
         matches = [m for m in re.finditer(regex, data, flags=re.MULTILINE)]
         # Small sanity checks
         if maximum is not None and len(matches) > maximum:
-            return VoidResult.failed(f'Only {maximum} @{name} is allowed in the template')
+            return VoidResult.failed(f'Only {maximum} {name} is allowed in the template')
 
         for match in matches:
             # Get the information from the decorator
@@ -64,7 +67,8 @@ class GeneratorBase():
 
             # Search for the next decorator
             # @ in the middle of a function are replaced later
-            end = re.search(fr'^{self.comment_char}\s*@(?!>[^\s])', updated_data, flags=re.MULTILINE)
+            # end = re.search(fr'^{self.comment_char}\s*@(?!>[^\s])', updated_data, flags=re.MULTILINE)
+            end = re.search(fr'^\s*<DTIG(?!>[^\s])', updated_data, flags=re.MULTILINE)
             offset = (len(data) - len(updated_data))
             function_end = len(data) - 1 if end is None else end.start() - 1 + offset
 
@@ -110,7 +114,8 @@ class GeneratorBase():
 
     def replace_calls(self, contents: str):
         iter_body = contents
-        regex = fr'{self.comment_char}\s*@>([a-z_]*\b)(\(([a-z_]*)\))?'
+        # regex = fr'{self.comment_char}\s*@>([a-z_]*\b)(\(([a-z_]*)\))?'
+        regex = fr'DTIG>([A-Z_]*\b)(\(([\w_]*)\))?'
         while True:
             match = re.search(regex, iter_body)
             if not match:
@@ -118,6 +123,7 @@ class GeneratorBase():
 
             offset = (len(contents) - len(iter_body))
             replacement = self.name_from_key(match.groups())
+            # LOG_TRACE(f'Replacing: {match} -> {replacement}')
             contents = contents[:match.start() + offset] + replacement + contents[match.end() + offset:]
 
             iter_body = iter_body[match.end():]
@@ -247,6 +253,26 @@ class GeneratorBase():
                 return f'{self.callbacks[name][KEY_BODY]}{args if args else ""}'
             else:
                 return f'{self.callbacks[KEY_NEW][name][KEY_BODY]}{args if args else ""}'
+
+    def parse_language(self, parser, outer_key):
+        for key in self.callbacks[outer_key]:
+            if self.callbacks[outer_key][key][KEY_BODY]:
+                LOG_DEBUG(f'Parsing: {outer_key}: {type(self.callbacks[outer_key][key][KEY_BODY])}')
+                if isinstance(self.callbacks[outer_key][key][KEY_BODY], str):
+                    self.callbacks[outer_key][key][KEY_BODY] = parser.parse(self.callbacks[outer_key][key][KEY_BODY]) + "\n"
+                else:
+                    for i in range(len(self.callbacks[outer_key][key][KEY_BODY])):
+                        self.callbacks[outer_key][key][KEY_BODY][i] = parser.parse(self.callbacks[outer_key][key][KEY_BODY][i]) + "\n"
+
+    def parse_dtig_language(self, parser):
+        # This function should be called once the file structure is done
+        self.parse_language(parser, KEY_CALLBACK)
+        self.parse_language(parser, KEY_INHERIT)
+
+        self.parse_language(parser, KEY_CONSTRUCTOR)
+        self.parse_language(parser, KEY_DESTRUCTOR)
+        self.parse_language(parser, KEY_MEMBER)
+        self.parse_language(parser, KEY_METHOD)
 
     @abstractmethod
     def function_from_key(self, groups, default_name):

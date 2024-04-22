@@ -31,7 +31,6 @@ class ServerGenerator(GeneratorBase):
     def read_templates(self) -> VoidResult:
         self.common_template_file = engine_folder + \
             "/templates/python_server_template.py"
-        python.format(self.common_template_file)
 
         LOG_DEBUG(f'Parsing common template: {self.common_template_file}')
         formatting = python.format(self.common_template_file)
@@ -105,7 +104,7 @@ class ServerGenerator(GeneratorBase):
         # Then parse the engine template
         if self.engine_template_file:
             LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
-            formatting = python.format(self.engine_template_file)
+            # formatting = python.format(self.engine_template_file)
             if not formatting.is_success():
                 return formatting
 
@@ -125,6 +124,8 @@ class ServerGenerator(GeneratorBase):
                 data, KEY_METHOD, has_argument=False, maximum=None)
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read method: {result}')
+
+        self.parse_dtig_language()
 
         return VoidResult()
 
@@ -223,7 +224,6 @@ class ServerGenerator(GeneratorBase):
         args = groups[1]
         callback = groups[2]
 
-        LOG_INFO(groups)
         if callback:
             if self.is_valid_callback(callback):
                 if self.callbacks[name][callback][KEY_NAME]:

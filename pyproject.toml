@@ -19,5 +19,6 @@ dependencies = [
     "FMPy == 0.3.20",
     "plotly == 5.20.0",  # For testing this is quite nice
     "autopep8==2.1.0",
-    "cmake==3.29.0.1"    # To simplify build of C and C++ models
+    "cmake==3.29.0.1",    # To simplify build of C and C++ models
+    "lark==1.1.9"
 ]
