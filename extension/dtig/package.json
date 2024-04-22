@@ -1,0 +1,40 @@
+{
+  "name": "dtig",
+  "displayName": "DTIG",
+  "description": "DTIG Programming language",
+  "author": {
+    "name": "Felipe Xavier",
+    "email": "f.d.azeredo.coutinho.xavier@student.tue.nl",
+    "url": "https://github.com/FelipeACXavier"
+  },
+  "license": "MIT",
+  "contributors": [
+  ],
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "dtig",
+      "aliases": ["DTIG Language", "dtig"],
+      "extensions": [".dtig"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [
+      {
+        "path": "./syntaxes/dtig.tmLanguage.json",
+        "scopeName": "source.dtig.injection",
+        "injectTo": [
+          "source.js",
+          "source.python",
+          "source.matlab",
+          "source.cpp"
+        ]
+      }
+    ]
+  }
+}
