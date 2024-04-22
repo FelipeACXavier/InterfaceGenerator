@@ -7,6 +7,21 @@ from lark import Lark, Transformer, v_args
 
 from common.json_configuration import JsonConfiguration
 
+# TODO: How to improve this? For now we need to go through the for loop at least once
+class default_list(list):
+    def __init__(self):
+        super().__init__()
+        super().append({
+            KEY_ID: 0,
+            KEY_DESCRIPTION: "Invalid",
+            KEY_TYPE: "Invalid",
+            KEY_DEFAULT: "Invalid",
+            KEY_DESCRIPTION: "Invalid"
+        })
+
+    def __bool__(self):
+        return False
+
 lark_grammar= r"""
     ?start: test    -> program
 
@@ -165,6 +180,7 @@ class Parser:
         self.for_level = 0
         self.contents = text
         self.else_flag = False
+        self.else_if_flag = False
 
         # Start from index 0 with no brackets
         return self.parse_ast(text, 0, 0)
@@ -189,27 +205,52 @@ class Parser:
                 self.index += call_match.end()
 
                 # TODO: Check for success
+                c_and_b = []
                 cond_match = re.search(fr'\(.*\)', iter_body)
                 condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
 
                 iter_body = iter_body[cond_match.end():]
                 self.index += cond_match.end()
 
+
                 # Here, we have the entire if body, from start to end
                 if_body = self.parse_ast(iter_body, self.if_level, self.for_level)
                 iter_body = self.contents[self.index:]
+                c_and_b.append((condition, if_body))
+
+                while self.else_if_flag:
+                    cond_match = re.search(fr'\(.*\)', iter_body)
+                    condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+
+                    iter_body = iter_body[cond_match.end():]
+                    self.index += cond_match.end()
+
+                    self.else_if_flag = False
+                    else_if_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                    iter_body = self.contents[self.index:]
+
+                    c_and_b.append((condition, else_if_body))
 
                 else_body = ""
                 if self.else_flag:
                     self.else_flag = False
                     else_body = self.parse_ast(iter_body, self.if_level, self.for_level)
                     iter_body = self.contents[self.index:]
+                    # Else is "always" true
+                    c_and_b.append(("True", else_body))
 
-                val = self.conditional(condition)
-                if val:
-                    body += if_body.rstrip()
-                else:
-                    body += else_body.rstrip()
+                for item in c_and_b:
+                    if self.conditional(item[0]):
+                        body += item[1].rstrip()
+                        break
+
+            elif call == "DTIG_ELSE_IF":
+                body += iter_body[:call_match.start()].rstrip()
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                self.else_if_flag = True
+                return body
 
             elif call == "DTIG_ELSE":
                 body += iter_body[:call_match.start()].rstrip()
@@ -245,6 +286,7 @@ class Parser:
                 end_index = self.index
                 prev_index = self.index
                 cfg_list = self.conditional(condition)
+                is_default = cfg_list == default_list()
                 for i, cfg in enumerate(cfg_list):
                     self.item = cfg
                     self.item_index = i
@@ -254,7 +296,10 @@ class Parser:
                     self.for_level += 1
 
                     # Here, we have the entire if body, from start to end
-                    body += self.parse_ast(iter_body, self.if_level, self.for_level)
+                    tmp_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                    if not is_default:
+                        body += tmp_body
+
                     if i == 0:
                         end_index = self.index
 
@@ -392,7 +437,7 @@ class Parser:
     def get_from_list(self, var, name, key_name):
         if var == f'DTIG_{name}':
             if not self.cfg.has(key_name) or not len(self.cfg[key_name]):
-                return self.default_list()
+                return default_list()
             return self.cfg[key_name]
 
         elif var == f"DTIG_{name}_LENGTH":
@@ -476,15 +521,6 @@ class Parser:
         else:
             return call
 
-    def default_list(self):
-        return [{
-            KEY_ID: 0,
-            KEY_DESCRIPTION: "Invalid",
-            KEY_TYPE: "Invalid",
-            KEY_DEFAULT: "Invalid",
-            KEY_DESCRIPTION: "Invalid"
-        }]
-
 if __name__ == "__main__":
     start_logger(LogLevel.TRACE)
     config = JsonConfiguration()
@@ -501,8 +537,18 @@ def get_model_info(references):
     DTIG_FOR(DTIG_INPUTS)
     info_DTIG_ITEM_NAME = dtig_info.MInfo()
 
-    DTIG_IF(KEY_MODIFIER in DTIG_ITEM)
-    info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
+    DTIG_IF(4 < 1)
+    info_DTIG_ITEM_NAME.id.value = 1
+    DTIG_ELSE_IF(4 < 2)
+    info_DTIG_ITEM_NAME.id.value = 2
+    DTIG_ELSE_IF(4 < 3)
+    info_DTIG_ITEM_NAME.id.value = 3
+    DTIG_ELSE_IF(4 < 4)
+    info_DTIG_ITEM_NAME.id.value = 4
+    DTIG_ELSE_IF(6 < 5)
+    info_DTIG_ITEM_NAME.id.value = 5
+    DTIG_ELSE
+    info_DTIG_ITEM_NAME.id.value = 6
     DTIG_END_IF
 
     return_value.model_info.inputs.append(info_DTIG_ITEM_NAME)
