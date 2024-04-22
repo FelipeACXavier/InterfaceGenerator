@@ -1,9 +1,10 @@
-// @imports
+<DTIG_IMPORTS>
 #include <RTI/LogicalTimeInterval.h>
 #include <RTI/RTI1516fedTime.h>
 #include <RTI/RTIambassador.h>
 #include <RTI/RTIambassadorFactory.h>
 
+#include <algorithm>
 #include <locale>
 #include <codecvt>
 #include <memory>
@@ -12,7 +13,7 @@
 #include <string>
 #include <thread>
 
-#include "// @>ambassador_header"
+#include "DTIG>AMBASSADOR_HEADER"
 
 #include "dtig/dt_message.pb.h"
 #include "dtig/initialize.pb.h"
@@ -23,7 +24,8 @@
 #include "dtig/state.pb.h"
 #include "dtig/output.pb.h"
 #include "dtig/get_status.pb.h"
-#include "dtig/parameter.pb.h"
+#include "dtig/set_parameter.pb.h"
+#include "dtig/get_parameter.pb.h"
 
 #define MSG_SIZE 1024
 #define PORT 8080
@@ -35,22 +37,22 @@ using namespace rti1516;
 static const double STEP = 0.02;
 static const double STOP_TIME = 5.0;
 
-// @classname
+<DTIG_CLASSNAME>
 HLAFederate
 
-// @constructor(public)
+<DTIG_CONSTRUCTOR(PUBLIC)>
 HLAFederate()
 {
 }
 
-// @destructor(public)
+<DTIG_DESTRUCTOR(PUBLIC)>
 ~HLAFederate()
 {
   if (mClient >= 0)
     close(mClient);
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 std::wstring convertStringToWstring(const std::string& str)
 {
   const std::ctype<wchar_t>& CType = std::use_facet<std::ctype<wchar_t> >(std::locale());
@@ -59,8 +61,8 @@ std::wstring convertStringToWstring(const std::string& str)
   return std::wstring(&wideStringBuffer[0], wideStringBuffer.size());
 }
 
-// @run
-void runFederate(std::string federateName, std::string fom, std::string address, uint32_t port)
+<DTIG_RUN>
+void runFederate(const std::string& federateName, const std::string& fom, const std::string& address, uint32_t port)
 {
   rti1516::RTIambassadorFactory* factory = new rti1516::RTIambassadorFactory();
   std::vector<std::wstring> args;
@@ -84,7 +86,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     return;
   }
 
-  fedamb = std::make_shared<// @>ambassador>();
+  fedamb = std::make_shared<DTIG>AMBASSADOR>();
 
   mName = federateName;
 
@@ -129,7 +131,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     return;
   }
 
-  // @>callback(initialize)();
+  DTIG>CALLBACK(INITIALIZE)();
 
   rtiamb->registerFederationSynchronizationPoint(convertStringToWstring(READY_TO_RUN), toVariableLengthData(""));
   std::cout << "SynchronizationPoint registered" << std::endl;
@@ -138,38 +140,8 @@ void runFederate(std::string federateName, std::string fom, std::string address,
     rtiamb->evokeCallback(12.0);
   }
 
+  std::cout << "Initialized model. Continue?" << std::endl;
   waitForUser();
-
-  dtig::MDTMessage sMessage;
-  dtig::MStart startMessage;
-  startMessage.mutable_start_time()->set_value(0.0f);
-  startMessage.mutable_stop_time()->set_value(STOP_TIME);
-  startMessage.mutable_step_size()->set_step(STEP);
-  startMessage.set_run_mode(dtig::Run::STEPPED);
-  *sMessage.mutable_start() = startMessage;
-
-  auto startRet = SendMessage(sMessage);
-  if (startRet.code() != dtig::ReturnCode::SUCCESS)
-  {
-    std::cout << "Failed to start: " << initRet.error_message().value() << std::endl;
-    return;
-  }
-
-  dtig::MDTMessage statusMessage;
-  dtig::MGetStatus getStatus;
-  getStatus.set_request(true);
-  *statusMessage.mutable_get_status() = getStatus;
-
-  std::cout << "Waiting for model to start" << std::endl;
-  dtig::MReturnValue ret;
-  do
-  {
-    ret = SendMessage(statusMessage);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  } while (ret.has_status() &&
-           ret.status().state() != dtig::State::EState::RUNNING &&
-           ret.status().state() != dtig::State::EState::WAITING &&
-           ret.status().state() != dtig::State::EState::STOPPED);
 
   rtiamb->synchronizationPointAchieved(convertStringToWstring(READY_TO_RUN));
   std::cout << "Achieved sync point: " << READY_TO_RUN << ", waiting for federation..." << std::endl;
@@ -185,6 +157,41 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   std::cout << "Published and Subscribed" << std::endl;
 
   ObjectInstanceHandle objectHandle = registerObject();
+
+
+  dtig::MDTMessage sMessage;
+  dtig::MStart startMessage;
+  startMessage.mutable_start_time()->set_value(0.0f);
+  startMessage.mutable_stop_time()->set_value(STOP_TIME);
+  startMessage.mutable_step_size()->set_step(STEP);
+  startMessage.set_run_mode(dtig::Run::STEPPED);
+  *sMessage.mutable_start() = startMessage;
+
+  dtig::MDTMessage statusMessage;
+  dtig::MGetStatus getStatus;
+  getStatus.set_request(true);
+  *statusMessage.mutable_get_status() = getStatus;
+
+  std::cout << "Start?" << std::endl;
+  waitForUser();
+
+  auto startRet = SendMessage(sMessage);
+  if (startRet.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to start: " << initRet.error_message().value() << std::endl;
+    return;
+  }
+
+  std::cout << "Waiting for model to start" << std::endl;
+  dtig::MReturnValue ret;
+  do
+  {
+    ret = SendMessage(statusMessage);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  } while (ret.has_status() &&
+           ret.status().state() != dtig::State::EState::RUNNING &&
+           ret.status().state() != dtig::State::EState::WAITING &&
+           ret.status().state() != dtig::State::EState::STOPPED);
 
   dtig::MDTMessage aMessage;
   dtig::MAdvance advanceMessage;
@@ -202,7 +209,7 @@ void runFederate(std::string federateName, std::string fom, std::string address,
       std::this_thread::sleep_for(std::chrono::microseconds(20));
     } while (ret.has_status() && ret.status().state() == dtig::State::EState::RUNNING);
 
-    // @>callback(get_output)();
+    DTIG>CALLBACK(GET_OUTPUT)();
 
     ret = SendMessage(aMessage);
     if (ret.code() != dtig::ReturnCode::SUCCESS)
@@ -218,12 +225,12 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   std::cout << "Simulation done: " << fedamb->federateTime << std::endl;
   waitForUser();
 
-  dtig::MDTMessage stMessage;
+  dtig::MDTMessage dtMessage;
   dtig::MStop stopMessage;
   stopMessage.set_mode(dtig::Stop::CLEAN);
-  *stMessage.mutable_stop() = stopMessage;
+  *dtMessage.mutable_stop() = stopMessage;
 
-  auto stopRet = SendMessage(stMessage);
+  auto stopRet = SendMessage(dtMessage);
   if (stopRet.code() != dtig::ReturnCode::SUCCESS)
     std::cout << "Failed to start: " << stopRet.error_message().value() << std::endl;
 
@@ -247,14 +254,14 @@ void runFederate(std::string federateName, std::string fom, std::string address,
   }
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void waitForUser()
 {
   std::cout << " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" << std::endl;
   (void)getchar();
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void enableTimePolicy()
 {
   /////////////////////////////
@@ -281,40 +288,40 @@ void enableTimePolicy()
   }
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
-    // @>callback(set_parameter)(theObject, theAttributeValues);
+    DTIG>CALLBACK(SET_PARAMETER)(theObject, theAttributeValues);
   };
 
   fedamb->interactionReceived = [this](rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues) {
-    // @>callback(set_input)(theInteraction, theParameterValues);
+    DTIG>CALLBACK(SET_INPUT)(theInteraction, theParameterValues);
   };
 
-  // @>callback(subscribe)();
-  // @>callback(publish)();
+  DTIG>CALLBACK(SUBSCRIBE)();
+  DTIG>CALLBACK(PUBLISH)();
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 ObjectInstanceHandle registerObject()
 {
   return rtiamb->registerObjectInstance(rtiamb->getObjectClassHandle(L"ObjectRoot.Parameters"));
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 rti1516::VariableLengthData toVariableLengthData(const char* s)
 {
   return toData(s);
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void updateAttributeValues(ObjectInstanceHandle objectHandle)
 {
-  // @>callback(get_parameter)(objectHandle);
+  DTIG>CALLBACK(GET_PARAMETER)(objectHandle);
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void advanceTime(double timestep)
 {
   /// request the advance
@@ -330,13 +337,13 @@ void advanceTime(double timestep)
   }
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 void deleteObject(ObjectInstanceHandle objectHandle)
 {
   rtiamb->deleteObjectInstance(objectHandle, toVariableLengthData(""));
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 dtig::MReturnValue SendMessage(const google::protobuf::Message& message)
 {
   dtig::MReturnValue result;
@@ -362,7 +369,7 @@ dtig::MReturnValue SendMessage(const google::protobuf::Message& message)
   return result;
 }
 
-// @main
+<DTIG_MAIN>
 #include <chrono>
 #include <cstring>
 #include <thread>
@@ -374,7 +381,7 @@ dtig::MReturnValue SendMessage(const google::protobuf::Message& message)
 int main(int argc, char *argv[])
 {
   std::string federateName, fomPath, rtiAddress;
-  char* port = "";
+  std::string port;
   bool name = false;
   bool fom = false;
   bool address = false;
@@ -383,18 +390,18 @@ int main(int argc, char *argv[])
   {
     if (strcmp(argv[i], "--name") == 0)
     {
-        federateName = argv[i+1];
+        federateName = argv[i + 1];
         name = true;
     }
     else if (strcmp(argv[i], "--fom") == 0)
     {
         fom = true;
-        fomPath = argv[i+1];
+        fomPath = argv[i + 1];
     }
     else if (strcmp(argv[i], "--address") == 0)
     {
         address = true;
-        rtiAddress = argv[i+1];
+        rtiAddress = argv[i + 1];
     }
     else if (strcmp(argv[i], "--port") == 0)
     {
@@ -416,8 +423,8 @@ int main(int argc, char *argv[])
         rtiAddress = "127.0.0.1";
 
       // create and run the federate
-      auto federate = std::make_shared<// @>classname>();
-      federate->// @>run(federateName, fomPath, rtiAddress, std::stoi(port));
+      auto federate = std::make_shared<DTIG>CLASSNAME>();
+      federate->DTIG>RUN(federateName, fomPath, rtiAddress, std::stoi(port));
 
       waitpid(childPid, 0, 0);
     }
@@ -436,4 +443,232 @@ int main(int argc, char *argv[])
   }
 
   return 0;
+}
+
+<DTIG_CALLBACK(INITIALIZE)>
+void initializeHandles()
+{
+  try
+  {
+    DTIG_FOR(DTIG_PARAMETERS)
+    DTIG_IF(DTIG_INDEX == 0)
+
+    mAttributeHandler = rtiamb->getObjectClassHandle(L"DTIG_ITEM_NAMESPACE");
+    DTIG_END_IF
+    mAttributeHandlers.insert({DTIG_STR(DTIG_ITEM_NAME), rtiamb->getAttributeHandle(mAttributeHandler, L"DTIG_ITEM_NAME")});
+
+    DTIG_END_FOR
+
+    DTIG_FOR(DTIG_INPUTS)
+    DTIG_IF(DTIG_INDEX == 0)
+
+    mInputHandler = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE");
+    DTIG_END_IF
+    mInputHandlers.insert({rtiamb->getParameterHandle(mInputHandler, L"DTIG_ITEM_NAME"), DTIG_STR(DTIG_ITEM_NAME)});
+    DTIG_END_FOR
+
+    DTIG_FOR(DTIG_OUTPUTS)
+    DTIG_IF(DTIG_INDEX == 0)
+
+    mOutputHandler = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE");
+    DTIG_END_IF
+    mOutputHandlers.insert({DTIG_STR(DTIG_ITEM_NAME), rtiamb->getParameterHandle(mOutputHandler, L"DTIG_ITEM_NAME")});
+    DTIG_END_FOR
+  }
+  catch (NameNotFound error)
+  {
+    std::wcout << "Failed to initialize handles: " << error.what() << std::endl;
+  }
+}
+
+<DTIG_CALLBACK(SET_INPUT)>
+void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues)
+{
+  dtig::MInput inputMessage;
+
+  for (auto it = parameterValues.begin(); it != parameterValues.end(); ++it)
+  {
+    std::string item = mInputHandlers[it->first];
+    *inputMessage.mutable_inputs()->add_identifiers() = item;
+    DTIG_FOR(DTIG_INPUTS)
+    DTIG_IF(DTIG_INDEX == 0)
+    if (item == DTIG_STR(DTIG_ITEM_NAME))
+    DTIG_ELSE
+    else if (item == DTIG_STR(DTIG_ITEM_NAME))
+    DTIG_END_IF
+    {
+      DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value;
+      value.set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(it->second));
+      inputMessage.mutable_inputs()->add_values()->PackFrom(value);
+    }
+    DTIG_END_FOR
+    else
+    {
+      std::cout << "Unknown input: " << item << std::endl;
+      return;
+    }
+  }
+
+  dtig::MDTMessage message;
+  *message.mutable_set_input() = inputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+    std::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;
+}
+
+<DTIG_CALLBACK(GET_OUTPUT)>
+void GetOutput()
+{
+  dtig::MOutput outputMessage;
+  DTIG_IF(DTIG_OUTPUTS)
+  DTIG_FOR(DTIG_OUTPUTS)
+  *outputMessage.mutable_outputs()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+  DTIG_END_FOR
+
+  dtig::MDTMessage message;
+  *message.mutable_get_output() = outputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to get outputs: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  ParameterHandleValueMap parameters;
+  DTIG_FOR(DTIG_OUTPUTS)
+
+  std::string idDTIG_ITEM_NAME = ret.values().identifiers(DTIG_INDEX);
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) valueDTIG_ITEM_NAME;
+  if (ret.values().values(DTIG_INDEX).UnpackTo(&valueDTIG_ITEM_NAME))
+  {
+    DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE) vDTIG_ITEM_NAME = valueDTIG_ITEM_NAME.value();
+    parameters[mOutputHandlers.at(idDTIG_ITEM_NAME)] = toData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(&vDTIG_ITEM_NAME);
+  }
+  else
+  {
+    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
+  }
+
+  DTIG_END_FOR
+
+  rtiamb->sendInteraction(mOutputHandler, parameters, toVariableLengthData(mName.c_str()));
+  DTIG_END_IF
+}
+
+<DTIG_METHOD(PUBLIC)>
+std::string getAttribute(const rti1516::AttributeHandle& handle) const
+{
+  for (auto it = mAttributeHandlers.begin(); it != mAttributeHandlers.end(); ++it)
+    if (it->second == handle)
+      return it->first;
+
+  return std::string();
+}
+
+<DTIG_CALLBACK(SET_PARAMETER)>
+void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)
+{
+  dtig::MSetParameter paramMessage;
+
+  for (auto it = attributes.begin(); it != attributes.end(); ++it)
+  {
+    std::string item = getAttribute(it->first);
+    if (item.empty())
+      continue;
+
+    *paramMessage.mutable_parameters()->add_identifiers() = item;
+    DTIG_FOR(DTIG_PARAMETERS)
+    DTIG_IF(DTIG_INDEX == 0)
+    if (item == DTIG_STR(DTIG_ITEM_NAME))
+    DTIG_ELSE
+    else if (item == DTIG_STR(DTIG_ITEM_NAME))
+    DTIG_END_IF
+    {
+      DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value;
+      value.set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(it->second));
+      paramMessage.mutable_parameters()->add_values()->PackFrom(value);
+    }
+    DTIG_END_FOR
+    else
+    {
+      std::cout << "Unknown parameter: " << item << std::endl;
+      return;
+    }
+  }
+
+  dtig::MDTMessage message;
+  *message.mutable_set_parameter() = paramMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+    std::cout << "Failed to set parameters: " << ret.error_message().value() << std::endl;
+}
+
+<DTIG_CALLBACK(GET_PARAMETER)>
+void GetParameter(const ObjectInstanceHandle& handler)
+{
+  DTIG_IF(DTIG_PARAMETERS)
+  dtig::MGetParameter paramMessage;
+  DTIG_FOR(DTIG_PARAMETERS)
+  *paramMessage.mutable_parameters()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+  DTIG_END_FOR
+
+  dtig::MDTMessage message;
+  *message.mutable_get_parameter() = paramMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to get parameters: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  AttributeHandleValueMap attributesMap;
+  DTIG_FOR(DTIG_PARAMETERS)
+
+  std::string idDTIG_ITEM_NAME = ret.values().identifiers(DTIG_INDEX);
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) valueDTIG_ITEM_NAME;
+  if (ret.values().values(DTIG_INDEX).UnpackTo(&valueDTIG_ITEM_NAME))
+  {
+    DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE) vDTIG_ITEM_NAME = valueDTIG_ITEM_NAME.value();
+    attributesMap[mAttributeHandlers.at(idDTIG_ITEM_NAME)] = toData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(&vDTIG_ITEM_NAME);
+  }
+  else
+  {
+    std::cout << "Failed to unpack parameter: DTIG_ITEM_NAME" << std::endl;
+  }
+  DTIG_END_FOR
+
+  rtiamb->updateAttributeValues(handler, attributesMap, toVariableLengthData(mName.c_str()));
+  DTIG_END_IF
+}
+
+<DTIG_CALLBACK(PUBLISH)>
+void SetupPublishers()
+{
+  DTIG_IF(DTIG_PARAMETERS)
+  AttributeHandleSet pubAttributes;
+  for (const auto& pair : mAttributeHandlers)
+    pubAttributes.insert(pair.second);
+
+  rtiamb->publishObjectClassAttributes(mAttributeHandler, pubAttributes);
+  DTIG_END_IF
+
+  DTIG_IF(DTIG_OUTPUTS)
+  rtiamb->publishInteractionClass(mOutputHandler);
+  DTIG_END_IF
+}
+
+<DTIG_CALLBACK(SUBSCRIBE)>
+void SetupSubscribers()
+{
+  DTIG_IF(DTIG_PARAMETERS)
+  AttributeHandleSet subAttributes;
+  for (const auto& pair : mAttributeHandlers)
+    subAttributes.insert(pair.second);
+
+  rtiamb->subscribeObjectClassAttributes(mAttributeHandler, subAttributes, true);
+  DTIG_END_IF
+
+  DTIG_IF(DTIG_INPUTS)
+  rtiamb->subscribeInteractionClass(mInputHandler);
+  DTIG_END_IF
 }

@@ -23,6 +23,7 @@ class GeneratorBase():
 
         self.function_regex = None
         self.function_definition = None
+        self.function_body_wrapper = lambda body: f'\n{body}\n'
         self.callbacks = create_default_structure()
 
         self.dtig_parser = None
@@ -84,9 +85,9 @@ class GeneratorBase():
             callback_name = callback[KEY_NAME]
 
             if callback[KEY_SELF]:
-                definition = re.search(self.function_regex, body)
+                definition = re.search(self.function_regex, body, flags=re.MULTILINE)
                 if not definition:
-                    LOG_WARNING(f'\n{body}')
+                    LOG_WARNING(f'{self.function_regex} \n{body}')
                     return VoidResult.failed(f'Could not find function definition for: {name}')
 
                 function_id, function_args = self.function_from_key(definition, callback_name)
@@ -105,11 +106,11 @@ class GeneratorBase():
                 if name == KEY_INHERIT or name == KEY_MEMBER:
                     self.callbacks[name][decorator_arg][KEY_BODY].append(body)
                 elif name == KEY_METHOD:
-                    self.callbacks[name][decorator_arg][KEY_BODY].append(f'\n{body}\n')
+                    self.callbacks[name][decorator_arg][KEY_BODY].append(self.function_body_wrapper(body))
                 else:
-                    self.callbacks[name][decorator_arg][KEY_BODY] = f'\n{body}\n'
+                    self.callbacks[name][decorator_arg][KEY_BODY] = self.function_body_wrapper(body)
             else:
-                self.callbacks[name][KEY_BODY] = f'\n{body}\n' if self.callbacks[name][KEY_SELF] else f'{body}'
+                self.callbacks[name][KEY_BODY] = self.function_body_wrapper(body) if self.callbacks[name][KEY_SELF] else f'{body}'
 
         return VoidResult()
 
@@ -125,7 +126,7 @@ class GeneratorBase():
             offset = (len(contents) - len(iter_body))
             replacement = self.name_from_key(match.groups())
             # LOG_TRACE(f'Replacing: {match} -> {replacement}')
-            contents = contents[:match.start() + offset] + replacement + contents[match.end() + offset:]
+            contents = contents[:match.start() + offset] + replacement.strip("\r\n") + contents[match.end() + offset:]
 
             iter_body = iter_body[match.end():]
 
@@ -208,8 +209,14 @@ class GeneratorBase():
         if self.callbacks[KEY_RUN_SERVER][KEY_BODY]:
             body += self.callbacks[KEY_RUN_SERVER][KEY_BODY]
 
+        if self.callbacks[KEY_CALLBACK][KEY_RUN_SERVER][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_RUN_SERVER][KEY_BODY]
+
         if self.callbacks[KEY_RUN_CLIENT][KEY_BODY]:
             body += self.callbacks[KEY_RUN_CLIENT][KEY_BODY]
+
+        if self.callbacks[KEY_CALLBACK][KEY_RUN_CLIENT][KEY_BODY]:
+            body += self.callbacks[KEY_CALLBACK][KEY_RUN_CLIENT][KEY_BODY]
 
         for key, access in self.callbacks[KEY_METHOD].items():
             for method in access[KEY_BODY]:
@@ -265,7 +272,11 @@ class GeneratorBase():
                     for i in range(len(self.callbacks[outer_key][key][KEY_BODY])):
                         self.callbacks[outer_key][key][KEY_BODY][i] = parser.parse(self.callbacks[outer_key][key][KEY_BODY][i]) + "\n"
 
-    def parse_dtig_language(self, parser):
+    def parse_dtig_language(self, parser=None):
+        if not parser:
+            LOG_WARNING(f'No parser provided')
+            return
+
         # This function should be called once the file structure is done
         self.parse_language(parser, KEY_CALLBACK)
         self.parse_language(parser, KEY_INHERIT)

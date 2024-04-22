@@ -13,6 +13,7 @@ from interface.python_generator import ServerGenerator
 
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
+template_folder = engine_folder + "/templates"
 
 class ServerGeneratorFreeCAD(ServerGenerator):
     def __init__(self, output_file):
@@ -21,7 +22,7 @@ class ServerGeneratorFreeCAD(ServerGenerator):
 
     def generate(self, config : ModelConfigurationBase) -> VoidResult:
         self.config = config
-        self.engine_template_file = f'{engine_folder}/server_callbacks.m'
+        self.engine_template_file = f'{template_folder}/server_callbacks.py'
 
         return super().generate(config)
 
@@ -49,7 +50,7 @@ class ServerGeneratorFreeCAD(ServerGenerator):
         elif variable_type == TYPE_SOLID:
             return "ObjectsFem.makeMaterialSolid"
 
-    def parse_dtig_language(self):
+    def parse_dtig_language(self, parser=None):
         from language import parser
 
         dtig_parser = parser.Parser(self.config)
@@ -59,5 +60,5 @@ class ServerGeneratorFreeCAD(ServerGenerator):
         dtig_parser.to_proto_message = lambda variable_type: python.to_proto_message(variable_type)
         dtig_parser.to_string = lambda variable_type: f'f\"{variable_type}\"'
 
-        return super().parse_dtig_language(dtig_parser)
+        return super().parse_dtig_language(parser=dtig_parser)
 

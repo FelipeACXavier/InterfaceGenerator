@@ -8,22 +8,15 @@ from enum import Enum
 from time import sleep
 
 # Protobuf imports
-import dtig.stop_pb2 as dtig_stop
 import dtig.info_pb2 as dtig_info
-import dtig.start_pb2 as dtig_start
 import dtig.utils_pb2 as dtig_utils
-import dtig.input_pb2 as dtig_input
 import dtig.state_pb2 as dtig_state
 import dtig.status_pb2 as dtig_status
-import dtig.output_pb2 as dtig_output
 import dtig.values_pb2 as dtig_values
-import dtig.advance_pb2 as dtig_advance
 import dtig.return_code_pb2 as dtig_code
 import dtig.run_mode_pb2 as dtig_run_mode
 import dtig.dt_message_pb2 as dtig_message
 import dtig.return_value_pb2 as dtig_return
-import dtig.model_info_pb2 as dtig_model_info
-import dtig.initialize_pb2 as dtig_initialize
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
@@ -151,7 +144,7 @@ def parse_get_parameter(message) -> dtig_return.MReturnValue:
     return_message = DTIG>CALLBACK(GET_PARAMETER)(message.parameters.identifiers)
     if len(return_message.values.identifiers) != ids_length and return_message.code == dtig_code.SUCCESS:
         return_message.code = dtig_code.FAILURE
-        return_message.error_message.value = 'Failed to get all outputs'
+        return_message.error_message.value = 'Failed to get all parameters'
 
     return return_message
 
@@ -304,7 +297,7 @@ def start_callback(message) -> Message:
     return self.return_code(dtig_code.UNKNOWN_OPTION, f'Engine does not support start call')
 
 <DTIG_CALLBACK(MODEL_INFO)>
-def get_model_info(references):
+def get_model_info():
     return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
     # Inputs

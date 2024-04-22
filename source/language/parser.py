@@ -3,8 +3,6 @@ import re
 from common.keys import *
 from common.logging import *
 
-from language.lexer import Lexer
-from language.lexer_tokens import Type
 from lark import Lark, Transformer, v_args
 
 from common.json_configuration import JsonConfiguration
@@ -93,7 +91,6 @@ class CalculateCondition(Transformer):
         elif op == "IN":
             return left in right
         elif op == "NOT IN":
-            LOG_DEBUG(f'{left} {op} {right}')
             return left not in right
         elif op == "IS":
             return left is right
@@ -215,12 +212,12 @@ class Parser:
                     body += else_body.rstrip()
 
             elif call == "DTIG_ELSE":
-                to_replace = iter_body[:call_match.start()].rstrip()
+                body += iter_body[:call_match.start()].rstrip()
                 iter_body = iter_body[call_match.end():]
                 self.index += call_match.end()
 
                 self.else_flag = True
-                return body + to_replace
+                return body
 
             elif call == "DTIG_END_IF":
                 self.if_level -= 1
@@ -393,7 +390,6 @@ class Parser:
             return self.type_to_regex(var)
 
     def get_from_list(self, var, name, key_name):
-        LOG_DEBUG(f'Getting: {var} == {name}')
         if var == f'DTIG_{name}':
             if not self.cfg.has(key_name) or not len(self.cfg[key_name]):
                 return self.default_list()

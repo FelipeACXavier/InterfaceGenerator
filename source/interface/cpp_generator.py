@@ -12,7 +12,7 @@ from common.model_configuration_base import ModelConfigurationBase
 
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
-cpp_function_regex=fr'^([A-Za-z_:1-9\s<>]*?)([\/@~A-Za-z_1-9]+)\(([\S\s]*?)\)'
+cpp_function_regex=fr'^(?!DTIG)([A-Za-z_:1-9\s<>]*?)([~A-Za-z_1-9]+)\(([\S\s]*?)\)'
 
 class HppGenerator(GeneratorBase):
     def __init__(self, output_file):
@@ -106,6 +106,12 @@ class HppGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
+        # Callbacks can be overwritten by each engine, but by parsing them here, we at least ensure that they exist
+        result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=NUMBER_OF_MESSAGES)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read callbacks: {result}')
+
         LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
 
         # Then parse the engine template
@@ -127,7 +133,7 @@ class HppGenerator(GeneratorBase):
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read engine method: {result}')
 
-        return VoidResult()
+        return super().read_templates()
 
     def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
@@ -379,6 +385,12 @@ class CppGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read parse: {result}')
 
+        # Callbacks can be overwritten by each engine, but by parsing them here, we at least ensure that they exist
+        result = self.parse_template(
+                data, KEY_CALLBACK, has_argument=True, maximum=NUMBER_OF_MESSAGES)
+        if not result.is_success():
+            return VoidResult.failed(f'Failed to read callbacks: {result}')
+
         LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
 
         # Then parse the engine template
@@ -395,7 +407,7 @@ class CppGenerator(GeneratorBase):
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read method: {result}')
 
-        return VoidResult()
+        return super().read_templates()
 
     def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
@@ -490,7 +502,7 @@ class CppGenerator(GeneratorBase):
         name = groups.groups()[1].strip() if default_name is None else default_name
         args = groups.groups()[2].strip()
 
-        function_id = f'{ctype} // @>{KEY_CLASS_NAME}::{name}'
+        function_id = f'{f"{ctype} " if ctype else ""}DTIG>{KEY_CLASS_NAME}::{name}'
 
         function_args = args
         return function_id, function_args

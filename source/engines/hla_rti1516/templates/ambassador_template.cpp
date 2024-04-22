@@ -1,4 +1,4 @@
-// @imports
+<DTIG_IMPORTS>
 #include <RTI/RTI1516fedTime.h>
 #include <string.h>
 
@@ -6,10 +6,10 @@
 
 using namespace rti1516;
 
-// @classname
+<DTIG_CLASSNAME>
 HLAAmbassador
 
-// @constructor(public)
+<DTIG_CONSTRUCTOR(PUBLIC)>
 HLAAmbassador()
 {
   // initialize all the variable values
@@ -23,19 +23,19 @@ HLAAmbassador()
   isReadyToRun = false;
 }
 
-// @destructor(public)
+<DTIG_DESTRUCTOR(PUBLIC)>
 ~HLAAmbassador() throw()
 {
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 double convertTime(LogicalTime const& theTime)
 {
   RTI1516fedTime castedTime = (RTI1516fedTime)theTime;
   return castedTime.getFedTime();
 }
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& variableLengthData)
 {
   if (!variableLengthData.size())
@@ -45,19 +45,19 @@ std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& vari
 }
 
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void synchronizationPointRegistrationSucceeded(std::wstring const& label) throw(FederateInternalError)
 {
   std::wcout << "Successfully registered sync point: " << label << std::endl;
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void synchronizationPointRegistrationFailed(std::wstring const& label, SynchronizationFailureReason reason) throw(FederateInternalError)
 {
   std::wcout << "Failed to register sync point: " << label << std::endl;
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void announceSynchronizationPoint(std::wstring const& label, VariableLengthData const& theUserSuppliedTag) throw(FederateInternalError)
 {
   std::wcout << "Synchronization point announced: " << label << std::endl;
@@ -67,7 +67,7 @@ void announceSynchronizationPoint(std::wstring const& label, VariableLengthData 
     this->isAnnounced = true;
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void federationSynchronized(std::wstring const& label) throw(FederateInternalError)
 {
   std::wcout << "Federation Synchronized: " << label << std::endl;
@@ -76,7 +76,7 @@ void federationSynchronized(std::wstring const& label) throw(FederateInternalErr
     this->isReadyToRun = true;
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void timeRegulationEnabled(LogicalTime const& theFederateTime) throw(InvalidLogicalTime,
                                                                                     NoRequestToEnableTimeRegulationWasPending,
                                                                                     FederateInternalError)
@@ -85,7 +85,7 @@ void timeRegulationEnabled(LogicalTime const& theFederateTime) throw(InvalidLogi
   this->federateTime = convertTime(theFederateTime);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void timeConstrainedEnabled(LogicalTime const& theFederateTime) throw(InvalidLogicalTime,
                                                                                      NoRequestToEnableTimeConstrainedWasPending,
                                                                                      FederateInternalError)
@@ -94,7 +94,7 @@ void timeConstrainedEnabled(LogicalTime const& theFederateTime) throw(InvalidLog
   this->federateTime = convertTime(theFederateTime);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void timeAdvanceGrant(LogicalTime const& theTime) throw(InvalidLogicalTime,
                                                         JoinedFederateIsNotInTimeAdvancingState,
                                                         FederateInternalError)
@@ -103,7 +103,7 @@ void timeAdvanceGrant(LogicalTime const& theTime) throw(InvalidLogicalTime,
   this->federateTime = convertTime(theTime);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void discoverObjectInstance(ObjectInstanceHandle theObject,
                             ObjectClassHandle theObjectClass,
                             std::wstring const& theObjectInstanceName) throw(CouldNotDiscover,
@@ -112,7 +112,7 @@ void discoverObjectInstance(ObjectInstanceHandle theObject,
 {
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -126,7 +126,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -141,7 +141,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void reflectAttributeValues(ObjectInstanceHandle theObject,
                             AttributeHandleValueMap const& theAttributeValues,
                             VariableLengthData const& theUserSuppliedTag,
@@ -157,7 +157,7 @@ void reflectAttributeValues(ObjectInstanceHandle theObject,
     attributeReceived(theObject, theAttributeValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -171,7 +171,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -186,7 +186,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -202,7 +202,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -219,7 +219,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -237,7 +237,7 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void receiveInteraction(InteractionClassHandle theInteraction,
                         ParameterHandleValueMap const& theParameterValues,
                         VariableLengthData const& theUserSuppliedTag,
@@ -256,14 +256,14 @@ void receiveInteraction(InteractionClassHandle theInteraction,
     interactionReceived(theInteraction, theParameterValues);
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder) throw(ObjectInstanceNotKnown, FederateInternalError)
 {
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder,
@@ -272,7 +272,7 @@ void removeObjectInstance(ObjectInstanceHandle theObject,
 {
 }
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 void removeObjectInstance(ObjectInstanceHandle theObject,
                           VariableLengthData const& theUserSuppliedTag,
                           OrderType sentOrder,

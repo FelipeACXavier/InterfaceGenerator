@@ -1,22 +1,22 @@
-// @imports
+<DTIG_IMPORTS>
 #include <RTI/NullFederateAmbassador.h>
 #include <functional>
 
 using namespace rti1516;
 
-// @classname
+<DTIG_CLASSNAME>
 HLAAmbassador
 
-// @inherit(public)
+<DTIG_INHERIT(PUBLIC)>
 NullFederateAmbassador
 
-// @constructor(public)
+<DTIG_CONSTRUCTOR(PUBLIC)>
 HLAAmbassador();
 
-// @destructor(public)
+<DTIG_DESTRUCTOR(PUBLIC)>
 virtual ~HLAAmbassador() throw();
 
-// @method(public)
+<DTIG_METHOD(PUBLIC)>
 virtual void synchronizationPointRegistrationSucceeded(std::wstring const& label) throw(FederateInternalError);
 
 virtual void synchronizationPointRegistrationFailed(std::wstring const& label, SynchronizationFailureReason reason) throw(FederateInternalError);
@@ -85,11 +85,11 @@ virtual void removeObjectInstance(ObjectInstanceHandle theObject, VariableLength
 virtual void removeObjectInstance(ObjectInstanceHandle theObject, VariableLengthData const& theUserSuppliedTag, OrderType sentOrder, LogicalTime const& theTime, OrderType receivedOrder) throw(ObjectInstanceNotKnown, FederateInternalError);
 virtual void removeObjectInstance(ObjectInstanceHandle theObject, VariableLengthData const& theUserSuppliedTag, OrderType sentOrder, LogicalTime const& theTime, OrderType receivedOrder, MessageRetractionHandle theHandle) throw(ObjectInstanceNotKnown, InvalidLogicalTime, FederateInternalError);
 
-// @method(private)
+<DTIG_METHOD(PRIVATE)>
 double convertTime(rti1516::LogicalTime const& theTime);
 std::wstring variableLengthDataToWstring(const rti1516::VariableLengthData& variableLengthData);
 
-// @member(public)
+<DTIG_MEMBER(PUBLIC)>
 double federateTime;
 double federateLookahead;
 

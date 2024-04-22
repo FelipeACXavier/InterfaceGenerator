@@ -27,7 +27,7 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
 
         self.engine_template_file = f'{template_dir}/simulink_callbacks.m'
 
-        self.generate_model_config(engine_folder + "/simulink_callbacks.m")
+        self.generate_model_config(f'{template_folder}/simulink_callbacks.m')
 
         return super().generate(config)
 

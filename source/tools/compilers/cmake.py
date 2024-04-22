@@ -24,11 +24,11 @@ class CMakeCompiler(CompilerBase):
                     LOG_INFO("Already installed")
                     return VoidResult()
 
+                create_dir(install_dir)
                 LOG_DEBUG(f'Installing to folder: {install_dir}')
                 cmake_cmd += "&& make install"
 
         create_dir(build_dir)
-        create_dir(install_dir)
 
         cd_cmd = f'cd {build_dir}'
         built = run_command(f'{cd_cmd} && {cmake_cmd}')
