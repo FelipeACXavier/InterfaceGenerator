@@ -305,40 +305,37 @@ def start_callback(message) -> Message:
 
 <DTIG_CALLBACK(MODEL_INFO)>
 def get_model_info(references):
-    if not self.model_name:
-        return self.return_code(dtig_code.FAILURE, f'Model is not yet known')
-
     return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
     # Inputs
     DTIG_FOR(DTIG_INPUTS)
     info_DTIG_ITEM_NAME = dtig_info.MInfo()
 
-    DTIG_IF(DTIG_ITEM_ID)
+    DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAME)
+    DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_TYPE)
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_UNIT)
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DEFAULT)
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
     DTIG_END_IF
 
@@ -349,31 +346,31 @@ def get_model_info(references):
     DTIG_FOR(DTIG_OUTPUTS)
     info_DTIG_ITEM_NAME = dtig_info.MInfo()
 
-    DTIG_IF(DTIG_ITEM_ID)
+    DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAME)
+    DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_TYPE)
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_UNIT)
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DEFAULT)
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
     DTIG_END_IF
 
@@ -384,35 +381,35 @@ def get_model_info(references):
     DTIG_FOR(DTIG_PARAMETERS)
     info_DTIG_ITEM_NAME = dtig_info.MInfo()
 
-    DTIG_IF(DTIG_ITEM_ID)
+    DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME.id.value = DTIG_ITEM_ID
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAME)
+    DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME.name.value = DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DESCRIPTION)
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME.description.value = DTIG_STR(DTIG_ITEM_DESCRIPTION)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_TYPE)
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME.type.value = DTIG_STR(DTIG_ITEM_TYPE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_UNIT)
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME.unit.value = DTIG_STR(DTIG_ITEM_UNIT)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_NAMESPACE)
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME.namespace.value = DTIG_STR(DTIG_ITEM_NAMESPACE)
     DTIG_END_IF
 
-    DTIG_IF(DTIG_ITEM_DEFAULT)
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
     DTIG_END_IF
 
-    return_value.model_info.outputs.append(info_DTIG_ITEM_NAME)
+    return_value.model_info.parameters.append(info_DTIG_ITEM_NAME)
     DTIG_END_FOR
 
     return return_value

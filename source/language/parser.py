@@ -16,7 +16,8 @@ lark_grammar= r"""
     ?or_test: and_test ("OR" and_test)*
     ?and_test: not_test_ ("AND" not_test_)*
     ?not_test_: "NOT" not_test_ -> not_test
-            | comparison
+        | "HAS" not_test_ -> has_test
+        | comparison
 
     ?comparison: expr (comp_op expr)*
 
@@ -32,11 +33,11 @@ lark_grammar= r"""
         | "DTIG_TRUE"    -> const_true
         | "DTIG_FALSE"   -> const_false
 
-    !_unary_op: "+"|"-"|"~"
+    !_unary_op: "+"|"-"
     !_add_op: "+"|"-"
     !_mul_op: "*"|"/"|"%"
 
-    !comp_op: "<"|">"|"=="|">="|"<="|"!="|"in"|"not" "in"|"is"|"is" "not"
+    !comp_op: "<"|">"|"=="|">="|"<="|"!="|"IN"|"NOT" "IN"|"IS"|"IS" "NOT"
 
     %import common.CNAME                -> NAME
     %import common.SIGNED_NUMBER        -> NUMBER
@@ -71,6 +72,10 @@ class CalculateCondition(Transformer):
         LOG_TRACE(f'not {left}')
         return not left
 
+    def has_test(self, left):
+        LOG_TRACE(f'has {left}')
+        return left is not None
+
     def comparison(self, left, op, right):
         LOG_TRACE(f'{left} {op} {right}')
         if op == "<":
@@ -85,13 +90,14 @@ class CalculateCondition(Transformer):
             return left <= right
         elif op == "!=":
             return left != right
-        elif op == "in":
+        elif op == "IN":
             return left in right
-        elif op == "not in":
+        elif op == "NOT IN":
+            LOG_DEBUG(f'{left} {op} {right}')
             return left not in right
-        elif op == "is":
+        elif op == "IS":
             return left is right
-        elif op == "is not":
+        elif op == "IS NOT":
             return left is not right
         else:
             raise Exception(f"Unknown operator: {op}")
@@ -122,8 +128,9 @@ class CalculateCondition(Transformer):
         except:
             raise Exception(f'Only integers are supported: {n}')
 
-    def comp_op(self, op):
-        return op
+    def comp_op(self, *op):
+        LOG_TRACE(f'comp_op {" ".join(op)}')
+        return " ".join(op)
 
     def const_true(self):
         return True
@@ -145,6 +152,7 @@ class Parser:
 
         self.to_proto_message = None
         self.type_to_function = None
+        self.to_string = None
 
         self.vars = dict()
 
@@ -310,7 +318,7 @@ class Parser:
                 iter_body = iter_body[cond_match.end():]
                 self.index += cond_match.end()
 
-                body += f'{to_replace}f\"{self.conditional(condition)}\"'
+                body += f'{to_replace}{self.to_string(self.conditional(condition))}'
 
             else:
                 var = self.variable(call)
@@ -372,41 +380,47 @@ class Parser:
                 return self.item[KEY_DEFAULT]
             return None
         # Inputs ==========================
-        elif var == "DTIG_INPUTS":
-            if not self.cfg.has(KEY_INPUTS) or not len(self.cfg[KEY_INPUTS]):
-                return self.default_list()
-            return self.cfg[KEY_INPUTS]
-        elif var == "DTIG_INPUTS_LENGTH":
-            if self.cfg.has(KEY_INPUTS):
-                return len(self.cfg[KEY_INPUTS])
-            return 0
+        elif "INPUTS" in var:
+            return self.get_from_list(var, "INPUTS", KEY_INPUTS)
         # Outputs =========================
-        elif var == "DTIG_OUTPUTS":
-            if not self.cfg.has(KEY_OUTPUTS) or not len(self.cfg[KEY_OUTPUTS]):
-                return self.default_list()
-            return self.cfg[KEY_OUTPUTS]
-        elif var == "DTIG_OUTPUTS_LENGTH":
-            if self.cfg.has(KEY_OUTPUTS):
-                return len(self.cfg[KEY_OUTPUTS])
-            return 0
+        elif "OUTPUTS" in var:
+            return self.get_from_list(var, "OUTPUTS", KEY_OUTPUTS)
         # Parameters ======================
-        elif var == "DTIG_PARAMETERS":
-            if not self.cfg.has(KEY_PARAMETERS) or not len(self.cfg[KEY_PARAMETERS]):
-                return self.default_list()
-            return self.cfg[KEY_PARAMETERS]
-        elif var == "DTIG_PARAMETERS_LENGTH":
-            if self.cfg.has(KEY_PARAMETERS):
-                return len(self.cfg[KEY_PARAMETERS])
-            return 0
+        elif "PARAMETERS" in var:
+            return self.get_from_list(var, "PARAMETERS", KEY_PARAMETERS)
         # Variables =======================
         else:
             return self.type_to_regex(var)
 
-    def call_to_regex(self, call):
-        if call == "DTIG_NOT":
-            return fr'\((.*)\)'
-        else:
-            return fr'\((.*(?<=,))?(.*)\)'
+    def get_from_list(self, var, name, key_name):
+        LOG_DEBUG(f'Getting: {var} == {name}')
+        if var == f'DTIG_{name}':
+            if not self.cfg.has(key_name) or not len(self.cfg[key_name]):
+                return self.default_list()
+            return self.cfg[key_name]
+
+        elif var == f"DTIG_{name}_LENGTH":
+            if self.cfg.has(key_name):
+                return len(self.cfg[key_name])
+            return 0
+
+        elif var == f"DTIG_{name}_NAMES":
+            if not self.cfg.has(key_name):
+                return None
+            names = []
+            for item in self.cfg[key_name]:
+                if KEY_NAME in item:
+                    names.append(item[KEY_NAME])
+            return names
+
+        elif var == f"DTIG_{name}_IDS":
+            if not self.cfg.has(key_name):
+                return None
+            names = []
+            for item in self.cfg[key_name]:
+                if KEY_ID in item:
+                    names.append(item[KEY_ID])
+            return names
 
     def type_to_regex(self, call):
         if call == "TYPE_BOOL":

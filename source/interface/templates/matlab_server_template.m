@@ -1,4 +1,4 @@
-% @imports
+<DTIG_IMPORTS>
 % Clear the prompt
 clc;
 
@@ -18,15 +18,16 @@ stopTime = 0.0;
 stepSize = 0.001;
 
 status = Status;
+status.wait = true;
 status.state = dtig.EState.UNINITIALIZED;
-status.step = false;
+status.mode = dtig.ERunMode.UNKNOWN;
 
-% @states
+<DTIG_STATES>
 classdef Status < handle
   properties
     state
     mode
-    step
+    wait
   end
   methods
     function set.state(obj, val)
@@ -35,11 +36,11 @@ classdef Status < handle
     function ret = get.state(obj)
         ret = obj.state;
     end
-    function set.step(obj, val)
-      obj.step = val;
+    function set.wait(obj, val)
+      obj.wait = val;
     end
-    function ret = get.step(obj)
-        ret = obj.step;
+    function ret = get.wait(obj)
+        ret = obj.wait;
     end
     function set.mode(obj, val)
       obj.mode = val;
@@ -50,7 +51,7 @@ classdef Status < handle
   end
 end
 
-% @main
+<DTIG_MAIN>
 % ======================================================================
 % Main
 % ======================================================================
@@ -62,13 +63,14 @@ try
   disp("Server is running");
 
   disp("Waiting for initialization");
-  waitfor(status, "state", dtig.EState.INITIALIZED);
+  if ~waitForState([dtig.EState.INITIALIZED])
+    return
+  end
 
-  % @>runmodel();
-
-  disp("Model done, waiting for stop");
-  waitfor(status, "state", dtig.EState.STOPPED);
-  % pause
+  while status.state ~= dtig.EState.STOPPED
+    DTIG>RUNMODEL();
+    disp("Model done, waiting for stop");
+  end
 catch exception
   disp(getReport(exception));
 end
@@ -80,7 +82,7 @@ clear server;
 % Functions
 % ======================================================================
 
-% @method(public)
+<DTIG_METHOD(PUBLIC)>
 function connectionFcn(src, ~)
   if src.Connected
     disp("Client has connected")
@@ -89,7 +91,7 @@ function connectionFcn(src, ~)
   end
 end
 
-% @method(public)
+<DTIG_METHOD(PUBLIC)>
 function readByteFcn(src, ~)
   if src.NumBytesAvailable < 1
     return
@@ -99,7 +101,7 @@ function readByteFcn(src, ~)
   data = read(src, src.NumBytesAvailable);
   message = dtig.Helpers.parseFrom(data);
   try
-    returnValue = % @>messagehandler(message);
+    returnValue = DTIG>MESSAGEHANDLER(message);
   catch exception
     disp(getReport(exception));
     returnValue = createReturn(dtig.EReturnCode.FAILURE, "Exception when handling message");
@@ -109,7 +111,7 @@ function readByteFcn(src, ~)
   write(src, dtig.Helpers.toByteArray(returnValue), "int8");
 end
 
-% @method(public)
+<DTIG_METHOD(PUBLIC)>
 function message = createReturn(code, errorMessage)
   message = dtig.MReturnValue.newBuilder();
   message.setCode(code);
@@ -118,43 +120,60 @@ function message = createReturn(code, errorMessage)
   end
 end
 
-% @messagehandler
+<DTIG_METHOD(PUBLIC)>
+function returnValue = waitForState(expectedStates)
+  global status;
+
+  while ~ismember(string(status.state), string(expectedStates))
+    waitfor(status, "wait", false);
+    status.wait = true;
+    if status.state == dtig.EState.STOPPED
+      returnValue = false;
+      return
+    end
+  end
+
+  returnValue = true;
+end
+
+<DTIG_MESSAGEHANDLER>
 function returnValue = handleMessage(message)
   if message.hasStop()
-    returnValue = % @>parse(stop)(message.getStop());
+    returnValue = DTIG>PARSE(STOP)(message.getStop());
   elseif message.hasStart()
-    returnValue = % @>parse(start)(message.getStart());
+    returnValue = DTIG>PARSE(START)(message.getStart());
   elseif message.hasSetInput()
-    returnValue = % @>parse(set_input)(message.getSetInput());
+    returnValue = DTIG>PARSE(SET_INPUT)(message.getSetInput());
   elseif message.hasGetOutput()
-    returnValue = % @>parse(get_output)(message.getGetOutput());
+    returnValue = DTIG>PARSE(GET_OUTPUT)(message.getGetOutput());
   elseif message.hasAdvance()
-    returnValue = % @>parse(advance)(message.getAdvance());
+    returnValue = DTIG>PARSE(ADVANCE)(message.getAdvance());
   elseif message.hasInitialize()
-    returnValue = % @>parse(initialize)(message.getInitialize());
+    returnValue = DTIG>PARSE(INITIALIZE)(message.getInitialize());
   elseif message.hasSetParameter()
-    returnValue = % @>parse(set_parameter)(message.getSetParameter());
+    returnValue = DTIG>PARSE(SET_PARAMETER)(message.getSetParameter());
   elseif message.hasGetParameter()
-    returnValue = % @>parse(get_parameter)(message.getGetParameter());
+    returnValue = DTIG>PARSE(GET_PARAMETER)(message.getGetParameter());
   elseif message.hasGetStatus()
-    returnValue = % @>parse(get_status)();
+    returnValue = DTIG>PARSE(GET_STATUS)();
   else
-    returnValue = % @>parse(model_info)();
+    returnValue = DTIG>PARSE(MODEL_INFO)();
   end
 end
 
-% @parse(initialize)
+<DTIG_PARSE(INITIALIZE)>
 function returnValue = parse_initialize(message)
   global status;
-  returnValue = % @>callback(initialize)(message);
+  returnValue = DTIG>CALLBACK(INITIALIZE)(message);
   if (returnValue.getCode() ~= dtig.EReturnCode.SUCCESS)
     return;
   end
 
   status.state = dtig.EState.INITIALIZED;
+  status.wait = false;
 end
 
-% @parse(start)
+<DTIG_PARSE(START)>
 function returnValue = parse_start(message)
   global status;
   % If the model was not yet initialized, we cannot start
@@ -163,23 +182,23 @@ function returnValue = parse_start(message)
     return;
   end
 
-  returnValue = % @>callback(start)(message);
+  returnValue = DTIG>CALLBACK(START)(message);
 end
 
-% @parse(stop)
+<DTIG_PARSE(STOP)>
 function returnValue = parse_stop(message)
   global status;
 
-  returnValue = % @>callback(stop)(message);
+  returnValue = DTIG>CALLBACK(STOP)(message);
   if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
     return
   end
 
-  status.step = true;
   status.state = dtig.EState.STOPPED;
+  status.wait = false;
 end
 
-% @parse(set_input)
+<DTIG_PARSE(SET_INPUT)>
 function returnValue = parse_set_input(message)
   global status;
   if (status.state == dtig.EState.UNINITIALIZED)
@@ -192,14 +211,14 @@ function returnValue = parse_set_input(message)
   for i = 0:nIds
     identifier = string(message.getInputs().getIdentifiers(i));
     anyValue = message.getInputs().getValues(i);
-    returnValue = % @>callback(set_input)(identifier, anyValue);
+    returnValue = DTIG>CALLBACK(SET_INPUT)(identifier, anyValue);
     if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
       return;
     end
   end
 end
 
-% @parse(set_parameter)
+<DTIG_PARSE(SET_PARAMETER)>
 function returnValue = parse_set_parameter(message)
   global status;
   if (status.state == dtig.EState.UNINITIALIZED)
@@ -212,14 +231,14 @@ function returnValue = parse_set_parameter(message)
   for i = 0:nIds
     identifier = message.getParameters().getIdentifiers(i);
     anyValue = message.getParameters().getValues(i);
-    returnValue = % @>callback(set_parameter)(identifier, anyValue);
+    returnValue = DTIG>CALLBACK(SET_PARAMETER)(identifier, anyValue);
     if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
       return;
     end
   end
 end
 
-% @parse(get_output)
+<DTIG_PARSE(GET_OUTPUT)>
 function returnValue = parse_get_output(message)
   global status;
   if (status.state == dtig.EState.UNINITIALIZED)
@@ -228,14 +247,14 @@ function returnValue = parse_get_output(message)
   end
 
   nIds = message.getOutputs().getIdentifiersCount();
-  returnValue = % @>callback(get_output)(message.getOutputs().getIdentifiersList());
+  returnValue = DTIG>CALLBACK(GET_OUTPUT)(message.getOutputs().getIdentifiersList());
   if returnValue.getValues().getIdentifiersCount() ~= nIds && returnValue.getCode() == dtig.EReturnCode.SUCCESS
     returnValue.setCode(dtig.EReturnCode.FAILURE);
     returnValue.setErrorMessage("Failed to get all parameters");
   end
 end
 
-% @parse(get_parameter)
+<DTIG_PARSE(GET_PARAMETER)>
 function returnValue = parse_get_parameter(message)
   global status;
   if (status.state == dtig.EState.UNINITIALIZED)
@@ -244,14 +263,14 @@ function returnValue = parse_get_parameter(message)
   end
 
   nIds = message.getParameters().getIdentifiersCount();
-  returnValue = % @>callback(get_parameter)(message.getParameters().getIdentifiers());
+  returnValue = DTIG>CALLBACK(GET_PARAMETER)(message.getParameters().getIdentifiers());
   if returnValue.getValues().getIdentifiersSize() ~= nIds && returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
     returnValue.setCode(dtig.EReturnCode.FAILURE);
     returnValue.setErrorMessage("Failed to get all parameters");
   end
 end
 
-% @parse(advance)
+<DTIG_PARSE(ADVANCE)>
 function returnValue = parse_advance(message)
   global status;
   if status.mode ~= dtig.ERunMode.STEPPED
@@ -264,66 +283,211 @@ function returnValue = parse_advance(message)
     return;
   end
 
-  returnValue = % @>callback(advance)(message);
+  returnValue = DTIG>CALLBACK(ADVANCE)(message);
 end
 
-% @parse(model_info)
+<DTIG_PARSE(MODEL_INFO)>
 function returnValue = parse_model_info()
-  global status;
-  if (status.state == dtig.EState.UNINITIALIZED)
-    returnValue = createReturn(dtig.EReturnCode.INVALID_STATE, "Cannot get model info while UNINITIALIZED");
-    return;
-  end
-
-  returnValue = % @>callback(model_info)();
+  returnValue = DTIG>CALLBACK(MODEL_INFO)();
 end
 
-% @parse(get_status)
+<DTIG_PARSE(GET_STATUS)>
 function returnValue = parse_get_status()
-  returnValue = % @>callback(get_status)();
+  returnValue = DTIG>CALLBACK(GET_STATUS)();
 end
 
-% @callback(initialize)
+<DTIG_CALLBACK(INITIALIZE)>
 function returnValue = initialize_callback(message)
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support initialize call");
 end
 
-% @callback(advance)
+<DTIG_CALLBACK(ADVANCE)>
 function returnValue = advance_callback(message)
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support advance call");
 end
 
-% @callback(stop)
+<DTIG_CALLBACK(STOP)>
 function returnValue = stop_callback(message)
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
 
-% @callback(start)
+<DTIG_CALLBACK(START)>
 function returnValue = start_callback(message)
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support start call");
 end
 
-% @callback(model_info)
-function returnValue = model_info_callback()
-  returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support model_info call");
+<DTIG_CALLBACK(MODEL_INFO)>
+function returnValue = model_info_callback(message)
+    returnValue = createReturn(dtig.EReturnCode.SUCCESS)
+
+    dtigModelInfo = dtig.MModelInfo.newBuilder();
+
+    % Inputs
+    DTIG_FOR(DTIG_INPUTS)
+    info_DTIG_ITEM_NAME = dtig.MInfo.newBuilder();
+
+    DTIG_IF(HAS DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME...
+      .setId(dtig.MU32.newBuilder()...
+        .setValue(DTIG_ITEM_ID))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME...
+      .setName(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME...
+      .setDescription(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME...
+      .setType(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME...
+      .setUnit(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME...
+      .setNamespace(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME...
+      .setDefault(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+    DTIG_END_IF
+
+    dtigModelInfo.addInputs(info_DTIG_ITEM_NAME);
+    DTIG_END_FOR
+
+    % Outputs
+    DTIG_FOR(DTIG_OUTPUTS)
+    info_DTIG_ITEM_NAME = dtig.MInfo.newBuilder();
+
+    DTIG_IF(HAS DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME...
+      .setId(dtig.MU32.newBuilder()...
+        .setValue(DTIG_ITEM_ID))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME...
+      .setName(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME...
+      .setDescription(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME...
+      .setType(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME...
+      .setUnit(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME...
+      .setNamespace(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME...
+      .setDefault(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+    DTIG_END_IF
+
+    dtigModelInfo.addOutputs(info_DTIG_ITEM_NAME);
+    DTIG_END_FOR
+
+    % Parameters
+    DTIG_FOR(DTIG_PARAMETERS)
+    info_DTIG_ITEM_NAME = dtig.MInfo.newBuilder();
+
+    DTIG_IF(HAS DTIG_ITEM_ID)
+    info_DTIG_ITEM_NAME...
+      .setId(dtig.MU32.newBuilder()...
+        .setValue(DTIG_ITEM_ID))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAME)
+    info_DTIG_ITEM_NAME...
+      .setName(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
+    info_DTIG_ITEM_NAME...
+      .setDescription(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_TYPE)
+    info_DTIG_ITEM_NAME...
+      .setType(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_UNIT)
+    info_DTIG_ITEM_NAME...
+      .setUnit(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
+    info_DTIG_ITEM_NAME...
+      .setNamespace(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+    DTIG_END_IF
+
+    DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+    info_DTIG_ITEM_NAME...
+      .setDefault(dtig.MString.newBuilder()...
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+    DTIG_END_IF
+
+    dtigModelInfo.addParameters(info_DTIG_ITEM_NAME);
+    DTIG_END_FOR
+
+    returnValue.setModelInfo(dtigModelInfo)
 end
 
-% @callback(set_input)
+<DTIG_CALLBACK(SET_INPUT)>
 function returnValue = set_input_callback()
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support set_input call");
 end
 
-% @callback(get_output)
+<DTIG_CALLBACK(GET_OUTPUT)>
 function returnValue = get_output_callback()
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support get_output call");
 end
 
-% @callback(set_parameter)
+<DTIG_CALLBACK(SET_PARAMETER)>
 function returnValue = set_parameter_callback()
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support set_parameter call");
 end
 
-% @callback(get_parameter)
+<DTIG_CALLBACK(GET_PARAMETER)>
 function returnValue = get_parameter_callback()
   returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, "Engine does not support get_parameter call");
 end

@@ -37,7 +37,8 @@ class GeneratorBase():
         raise Exception("Not implemented")
 
     def read_templates(self) -> VoidResult:
-        pass
+        self.parse_dtig_language()
+        return VoidResult()
 
     def parse_template(self, data, name: str, has_argument: bool = False, maximum: int = None) -> VoidResult:
         if not self.comment_char:

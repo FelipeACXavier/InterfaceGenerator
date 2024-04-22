@@ -21,7 +21,7 @@ class ServerGeneratorFreeCAD(ServerGenerator):
 
     def generate(self, config : ModelConfigurationBase) -> VoidResult:
         self.config = config
-        self.engine_template_file = engine_folder + "/server_callbacks.py"
+        self.engine_template_file = f'{engine_folder}/server_callbacks.m'
 
         return super().generate(config)
 
@@ -57,6 +57,7 @@ class ServerGeneratorFreeCAD(ServerGenerator):
         # Define callbacks
         dtig_parser.type_to_function = lambda variable_type: self.type_to_freecad_function(variable_type)
         dtig_parser.to_proto_message = lambda variable_type: python.to_proto_message(variable_type)
+        dtig_parser.to_string = lambda variable_type: f'f\"{variable_type}\"'
 
         return super().parse_dtig_language(dtig_parser)
 

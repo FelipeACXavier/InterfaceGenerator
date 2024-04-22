@@ -125,9 +125,7 @@ class ServerGenerator(GeneratorBase):
             if not result.is_success():
                 return VoidResult.failed(f'Failed to read method: {result}')
 
-        self.parse_dtig_language()
-
-        return VoidResult()
+        return super().read_templates()
 
     def generate(self, config: ModelConfigurationBase) -> VoidResult:
         reading_templates = self.read_templates()
