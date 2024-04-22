@@ -1,6 +1,6 @@
 import os
 
-from engines.fmi2.generator_fmi2 import *
+from engines.cmd.cmd_generator import *
 from common.json_configuration import JsonConfiguration
 
 from common.keys import *
@@ -23,11 +23,7 @@ def main():
         return
 
     file_system.create_dir(output_dir)
-    if config[KEY_ENGINE] == ENGINE_FMI2:
-        generator = ServerGeneratorFMI2(output_dir + ENGINE_FMI2)
-    else:
-        LOG_ERROR(f'Unknown engine {config[KEY_ENGINE]}')
-        return
+    generator = ClientGeneratorCMD(output_dir + "client")
 
     result = protobuf.generate_python(output_dir)
     if not result.is_success():

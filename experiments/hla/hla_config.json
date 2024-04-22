@@ -4,27 +4,29 @@
   "authors": "Author's name",
   "version": "1.0.0",
   "formalism": "continuous",
-  "client": "hla_rti1516",
-  "server": "simulink2024a",
+  "engine": "hla_rti1516",
+  "mode": "client",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
   "superdensetime": false,
   "inputs": [
     {
-      "id": 3,
+      "id": 0,
       "name": "h",
       "description": "Height of the ball",
       "type": "float64",
       "unit": "m",
+      "default": 5,
       "namespace": "InteractionRoot.Inputs"
     },
     {
-      "id": 4,
+      "id": 1,
       "name": "v",
       "description": "Velocity of the ball",
       "type": "float64",
       "unit": "m/s",
+      "default": 0,
       "namespace": "InteractionRoot.Inputs"
     }
   ],
@@ -53,6 +55,7 @@
       "description": "Gravity",
       "type": "float64",
       "unit": "m/s^2",
+      "default": 9.81,
       "namespace": "ObjectRoot.Parameters"
     },
     {
@@ -60,6 +63,7 @@
       "name": "e",
       "description": "Coefficient of restitution",
       "type": "float64",
+      "default": 0.7,
       "namespace": "ObjectRoot.Parameters"
     }
   ]

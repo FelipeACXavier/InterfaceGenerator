@@ -63,13 +63,11 @@ try
   disp("Server is running");
 
   disp("Waiting for initialization");
-  if ~waitForState([dtig.EState.INITIALIZED])
-    return
-  end
-
-  while status.state ~= dtig.EState.STOPPED
-    DTIG>RUNMODEL();
-    disp("Model done, waiting for stop");
+  if waitForState([dtig.EState.INITIALIZED])
+    while status.state ~= dtig.EState.STOPPED
+      DTIG>RUNMODEL();
+      disp("Model done");
+    end
   end
 catch exception
   disp(getReport(exception));
@@ -263,8 +261,8 @@ function returnValue = parse_get_parameter(message)
   end
 
   nIds = message.getParameters().getIdentifiersCount();
-  returnValue = DTIG>CALLBACK(GET_PARAMETER)(message.getParameters().getIdentifiers());
-  if returnValue.getValues().getIdentifiersSize() ~= nIds && returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+  returnValue = DTIG>CALLBACK(GET_PARAMETER)(message.getParameters().getIdentifiersList());
+  if returnValue.getValues().getIdentifiersCount() ~= nIds && returnValue.getCode() == dtig.EReturnCode.SUCCESS
     returnValue.setCode(dtig.EReturnCode.FAILURE);
     returnValue.setErrorMessage("Failed to get all parameters");
   end
@@ -317,7 +315,7 @@ function returnValue = start_callback(message)
 end
 
 <DTIG_CALLBACK(MODEL_INFO)>
-function returnValue = model_info_callback(message)
+function returnValue = model_info_callback()
     returnValue = createReturn(dtig.EReturnCode.SUCCESS)
 
     dtigModelInfo = dtig.MModelInfo.newBuilder();
@@ -329,43 +327,43 @@ function returnValue = model_info_callback(message)
     DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME...
       .setId(dtig.MU32.newBuilder()...
-        .setValue(DTIG_ITEM_ID))
+        .setValue(DTIG_ITEM_ID));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME...
       .setName(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME...
       .setDescription(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME...
       .setType(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME...
       .setUnit(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME...
       .setNamespace(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME...
       .setDefault(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)));
     DTIG_END_IF
 
     dtigModelInfo.addInputs(info_DTIG_ITEM_NAME);
@@ -378,43 +376,43 @@ function returnValue = model_info_callback(message)
     DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME...
       .setId(dtig.MU32.newBuilder()...
-        .setValue(DTIG_ITEM_ID))
+        .setValue(DTIG_ITEM_ID));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME...
       .setName(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME...
       .setDescription(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME...
       .setType(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME...
       .setUnit(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME...
       .setNamespace(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME...
       .setDefault(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)));
     DTIG_END_IF
 
     dtigModelInfo.addOutputs(info_DTIG_ITEM_NAME);
@@ -427,43 +425,43 @@ function returnValue = model_info_callback(message)
     DTIG_IF(HAS DTIG_ITEM_ID)
     info_DTIG_ITEM_NAME...
       .setId(dtig.MU32.newBuilder()...
-        .setValue(DTIG_ITEM_ID))
+        .setValue(DTIG_ITEM_ID));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAME)
     info_DTIG_ITEM_NAME...
       .setName(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAME)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAME)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DESCRIPTION)
     info_DTIG_ITEM_NAME...
       .setDescription(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)))
+        .setValue(DTIG_STR(DTIG_ITEM_DESCRIPTION)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_TYPE)
     info_DTIG_ITEM_NAME...
       .setType(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_TYPE)))
+        .setValue(DTIG_STR(DTIG_ITEM_TYPE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_UNIT)
     info_DTIG_ITEM_NAME...
       .setUnit(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_UNIT)))
+        .setValue(DTIG_STR(DTIG_ITEM_UNIT)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_NAMESPACE)
     info_DTIG_ITEM_NAME...
       .setNamespace(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)))
+        .setValue(DTIG_STR(DTIG_ITEM_NAMESPACE)));
     DTIG_END_IF
 
     DTIG_IF(HAS DTIG_ITEM_DEFAULT)
     info_DTIG_ITEM_NAME...
       .setDefault(dtig.MString.newBuilder()...
-        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)))
+        .setValue(DTIG_STR(DTIG_ITEM_DEFAULT)));
     DTIG_END_IF
 
     dtigModelInfo.addParameters(info_DTIG_ITEM_NAME);

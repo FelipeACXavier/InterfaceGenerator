@@ -33,7 +33,7 @@ class ServerGeneratorMatlab2024a(ServerGenerator):
         dtig_parser = parser.Parser(self.config)
 
         # Define callbacks
-        dtig_parser.type_to_function = lambda variable_type: variable_type
+        dtig_parser.type_to_function = lambda variable_type: matlab.to_type(variable_type)
         dtig_parser.to_proto_message = lambda variable_type: matlab.to_proto_message(variable_type)
         dtig_parser.to_string = lambda variable_type: f'\"{variable_type}\"'
 

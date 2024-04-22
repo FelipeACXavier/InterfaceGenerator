@@ -32,6 +32,34 @@ def read_file(file : str) -> str:
             data += line.replace("\t", DEFAULT_INDENTATION)
     return data
 
+def to_type(variable_type):
+    if variable_type == TYPE_FLOAT_32:
+        return f'\"Value\"'
+    elif variable_type == TYPE_FLOAT_64:
+        return f'\"Value\"'
+    elif variable_type == TYPE_INT_8:
+        return f'\"Value\"'
+    elif variable_type == TYPE_INT_16:
+        return f'\"Value\"'
+    elif variable_type == TYPE_INT_32:
+        return f'\"Value\"'
+    elif variable_type == TYPE_INT_64:
+        return f'\"Value\"'
+    elif variable_type == TYPE_UINT_8:
+        return f'\"Value\"'
+    elif variable_type == TYPE_UINT_16:
+        return f'\"Value\"'
+    elif variable_type == TYPE_UINT_32:
+        return f'\"Value\"'
+    elif variable_type == TYPE_UINT_64:
+        return f'\"Value\"'
+    elif variable_type == TYPE_STRING:
+        return f'\"Value\"'
+    elif variable_type == TYPE_BOOL:
+        return f'\"Value\"'
+    elif variable_type == TYPE_BYTES:
+        return f'\"Value\"'
+
 def to_proto_message(variable_type):
     if variable_type == TYPE_FLOAT_32:
         return f'dtig.MF32'

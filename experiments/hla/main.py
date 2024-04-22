@@ -25,7 +25,7 @@ def create_cmake_compiler(output_dir):
 
     compiler.add_source("main.cpp")
     compiler.add_source("*.cpp")
-    compiler.add_source("dtig/*.cc")
+    compiler.add_source(f'{output_dir}/dtig/*.cc', relative=False)
 
     compiler.add_include_dir(output_dir, relative=False)
     compiler.add_include_dir(f'{rti_dir}/install/include/rti1516', relative=False)
@@ -42,26 +42,17 @@ def create_cmake_compiler(output_dir):
 def main():
     start_logger(LogLevel.DEBUG)
     config = JsonConfiguration()
-    config.parse("config.json")
+    config.parse("hla_config.json")
 
     compiler = None
-    server_generator = None
-    client_generator = None
+    generator = None
 
-    server_name = None
-    client_name = None
-
-    if not config.has(KEY_CLIENT):
-        LOG_ERROR("No client provided")
+    if not config.has(KEY_ENGINE):
+        LOG_ERROR("No engine provided")
         return
 
-    if config[KEY_CLIENT] == ENGINE_HLA_RTI1516:
-        if not config.has(KEY_SERVER):
-            LOG_ERROR("The HLA client requires a coupled server")
-            return
-
-        create_dir(output_dir)
-
+    file_system.create_dir(output_dir)
+    if config[KEY_ENGINE] == ENGINE_HLA_RTI1516:
         # Make sure the OpenRTI library is available
         if not os.path.isdir(rti_dir):
             cloned = git.Git("https://github.com/onox/OpenRTI.git").clone(rti_dir)
@@ -76,8 +67,8 @@ def main():
             LOG_ERROR(compiled)
             return
 
-        client_name = ENGINE_HLA_RTI1516
-        client_generator = ClientGeneratorRTI1516(output_dir + client_name)
+        generated_file_name = ENGINE_HLA_RTI1516
+        generator = ClientGeneratorRTI1516(output_dir + generated_file_name)
 
         # Generate protobuf for C++
         result = protobuf.generate_cpp(output_dir)
@@ -87,95 +78,13 @@ def main():
 
         compiler = create_cmake_compiler(output_dir)
     else:
-        LOG_ERROR(f'Unknown client {config[KEY_CLIENT]}')
+        LOG_ERROR(f'Unknown engine {config[KEY_ENGINE]}')
         return
 
-    if config[KEY_SERVER] == ENGINE_FMI2:
-        from engines.fmi2.generator_fmi2 import ServerGeneratorFMI2
-
-        server_name = ENGINE_FMI2
-        server_generator = ServerGeneratorFMI2(output_dir + server_name)
-
-        # Generate protobuf for python
-        result = protobuf.generate_python(output_dir)
-        if not result.is_success():
-            LOG_ERROR(result)
-            return
-
-        client_generator.set_client_info("python", server_generator.get_output_file())
-
-    elif config[KEY_SERVER] == ENGINE_MATLAB_2024a:
-        # Engine specific import
-        from engines.matlab2024a.generator_matlab2024a import ServerGeneratorMatlab2024a
-
-        server_name = ENGINE_MATLAB_2024a
-        server_generator = ServerGeneratorMatlab2024a(output_dir + server_name)
-
-        # Generate protobuf for matlab
-        result = protobuf.generate_matlab(output_dir)
-        if not result.is_success():
-            LOG_ERROR(result)
-            return
-
-        java_compiler = javac.JavaCompiler(output_dir)
-        java_compiler.set_compiler(f'{output_dir}/java-compiler/bin/javac')
-        java_compiler.add_source("dtig/*.java")
-        java_compiler.add_library_dir("protobuf-java-3.20.3.jar")
-
-        generated = java_compiler.generate()
-        if not generated:
-            LOG_ERROR(f'Failed to generated java compiler file: {generated}')
-
-        installed = java_compiler.install("8u402-b06")
-        if not installed:
-            LOG_ERROR(f'Failed to install java compiler: {installed}')
-
-        compiled = java_compiler.compile()
-        if not compiled:
-            LOG_ERROR(f'Javac failed to compile file: {compiled}')
-
-        # client_generator.set_client_info("python", server_generator.get_output_file())
-
-    elif config[KEY_SERVER] == ENGINE_SIMULINK_2024a:
-        # Engine specific import
-        from engines.matlab2024a.generator_simulink2024a import ServerGeneratorSimulink2024a
-
-        server_name = ENGINE_SIMULINK_2024a
-        server_generator = ServerGeneratorSimulink2024a(output_dir + server_name)
-
-        # Generate protobuf for matlab
-        result = protobuf.generate_matlab(output_dir)
-        if not result.is_success():
-            LOG_ERROR(result)
-            return
-
-        java_compiler = javac.JavaCompiler(output_dir)
-        java_compiler.set_compiler(f'{output_dir}/java-compiler/bin/javac')
-        java_compiler.add_source("dtig/*.java")
-        java_compiler.add_library_dir("protobuf-java-3.20.3.jar")
-
-        generated = java_compiler.generate()
-        if not generated:
-            LOG_ERROR(f'Failed to generated java compiler file: {generated}')
-
-        installed = java_compiler.install("8u402-b06")
-        if not installed:
-            LOG_ERROR(f'Failed to install java compiler: {installed}')
-
-        compiled = java_compiler.compile()
-        if not compiled:
-            LOG_ERROR(f'Javac failed to compile file: {compiled}')
-
-        # client_generator.set_client_info("python", server_generator.get_output_file())
-    if server_generator:
-        server_result = server_generator.generate(config)
-        if not server_result.is_success():
-            LOG_ERROR(f'Failed to generate server: {server_result}')
-
-    if client_generator:
-        client_result = client_generator.generate(config)
-        if not client_result.is_success():
-            LOG_ERROR(f'Failed to generate client: {client_result}')
+    if generator:
+        generated = generator.generate(config)
+        if not generated.is_success():
+            LOG_ERROR(f'Failed to generate client: {generated}')
 
     if compiler:
         generated = compiler.generate()

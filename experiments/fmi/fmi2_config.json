@@ -1,28 +1,33 @@
 {
-  "name": "MySimpleCarModel",
-  "description": "A car model whose speed is controlled by an external model",
+  "name": "BouncingBall",
+  "description": "A bouncing ball model",
   "authors": "Author's name",
   "version": "1.0.0",
   "formalism": "continuous",
-  "server": "fmi2",
+  "engine": "fmi2",
+  "mode": "server",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
   "superdensetime": false,
   "inputs": [
     {
-      "id": 3,
+      "id": 0,
       "name": "h",
       "description": "Height of the ball",
       "type": "float64",
-      "unit": "m"
+      "unit": "m",
+      "default": 5,
+      "namespace": "InteractionRoot.Inputs"
     },
     {
-      "id": 4,
+      "id": 1,
       "name": "v",
       "description": "Velocity of the ball",
       "type": "float64",
-      "unit": "m/s"
+      "unit": "m/s",
+      "default": 0,
+      "namespace": "InteractionRoot.Inputs"
     }
   ],
   "outputs": [
@@ -50,6 +55,7 @@
       "description": "Gravity",
       "type": "float64",
       "unit": "m/s^2",
+      "default": 9.81,
       "namespace": "ObjectRoot.Parameters"
     },
     {
@@ -57,12 +63,8 @@
       "name": "e",
       "description": "Coefficient of restitution",
       "type": "float64",
+      "default": 0.7,
       "namespace": "ObjectRoot.Parameters"
     }
-  ],
-  "origin": [
-    "right",
-    "up",
-    "in"
   ]
 }

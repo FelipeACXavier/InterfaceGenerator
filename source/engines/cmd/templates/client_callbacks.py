@@ -1,12 +1,11 @@
+<DTIG_CALLBACK(CONSTRUCTOR)>
+self.previous_message = None
+
 <DTIG_CALLBACK(RUNCLIENT)>
 def run_client(self, sock):
     previous_option = "0"
     while self.running:
         option = self.print_menu()
-        if not len(option):
-            LOG_INFO(f'Using previous command: {previous_option}')
-            option = previous_option
-
         if option == "0":
             DTIG>PARSE(STOP)(sock)
         elif option == "1":
@@ -27,10 +26,11 @@ def run_client(self, sock):
             DTIG>PARSE(MODEL_INFO)(sock)
         elif option == "9":
             DTIG>PARSE(GET_STATUS)(sock)
+        elif self.previous_message:
+            LOG_INFO(f'Using previous command')
+            self.send_message(sock, self.previous_message)
         else:
             LOG_ERROR(f'Unknown command: {option}')
-
-        previous_option = option
 
 <DTIG_CALLBACK(STOP)>
 def stop(self, sock):
@@ -59,11 +59,22 @@ def start(self, sock):
     print("Available modes:")
     print(" 1 - Stepped")
     print(" 2 - Continuous")
-    message.start.run_mode = dtig_run_mode.STEPPED if int(input("What mode? ").strip()) == 0 else dtig_run_mode.CONTINUOUS
+    while True:
+        mode = int(input("What mode? ").strip())
+        if mode == 1:
+            message.start.run_mode = dtig_run_mode.STEPPED
+            break
+        elif mode == 2:
+            message.start.run_mode = dtig_run_mode.CONTINUOUS
+            break
+        else:
+            LOG_WARNING(f'Unknown mode: {mode}')
+
     self.send_message(sock, message)
 
 <DTIG_CALLBACK(ADVANCE)>
 def advance(self, sock):
+    message = dtig_message.MDTMessage()
     message.advance.step_size.step = float(input("What step size? "))
     self.send_message(sock, message)
 
@@ -304,6 +315,8 @@ def send_message(self, sock, message, handler=None):
         print("Server stopped")
         self.running = False
         return
+
+    self.previous_message = message
 
     response = dtig_return.MReturnValue()
     response.ParseFromString(received_data)

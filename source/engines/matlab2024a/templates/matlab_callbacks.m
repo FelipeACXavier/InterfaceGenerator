@@ -74,24 +74,15 @@ function run_model()
   % Initial values
   DTIG_FOR(DTIG_PARAMETERS)
   global DTIG_ITEM_NAME;
-  DTIG_IF(HAS DTIG_ITEM_DEFAULT)
-  DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
-  DTIG_END_IF
   DTIG_END_FOR
 
   DTIG_FOR(DTIG_INPUTS)
   global DTIG_ITEM_NAME;
-  DTIG_IF(HAS DTIG_ITEM_DEFAULT)
-  DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
-  DTIG_END_IF
   DTIG_END_FOR
 
   DTIG_FOR(DTIG_OUTPUTS)
   DTIG_IF(DTIG_ITEM_NAME NOT IN DTIG_INPUTS_NAMES)
   global DTIG_ITEM_NAME;
-  DTIG_IF(HAS DTIG_ITEM_DEFAULT)
-  DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
-  DTIG_END_IF
   DTIG_END_IF
   DTIG_END_FOR
 
@@ -139,7 +130,9 @@ function run_model()
     end
   end
 
-  status.state = dtig.EState.IDLE;
+  if status.state ~= dtig.EState.STOPPED
+    status.state = dtig.EState.IDLE;
+  end
 
   plot (t, y, "LineWidth", 1);
   xlabel("Time (s)");
@@ -169,9 +162,45 @@ function returnValue = set_inputs(reference, anyValue)
   DTIG_FOR(DTIG_INPUTS)
 
   DTIG_IF(DTIG_INDEX == 0)
-  if reference == DTIG_STR(DTIG_ITEM_NAME)
+  if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
   DTIG_ELSE
-  elseif reference == DTIG_STR(DTIG_ITEM_NAME)
+  elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
+  DTIG_END_IF
+    DTIG_ITEM_NAME = value.getValue();
+  DTIG_END_FOR
+  else
+    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown input: ", reference));
+    return;
+  end
+
+  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
+end
+DTIG_END_IF
+
+<DTIG_CALLBACK(SET_PARAMETER)>
+function returnValue = set_parameter(reference, anyValue)
+  DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
+  returnValue = createReturn(dtig.EReturnCode.FAILURE, "Model has no parameters");
+  return;
+  DTIG_ELSE
+
+  DTIG_FOR(DTIG_PARAMETERS)
+  global DTIG_ITEM_NAME;
+  DTIG_END_FOR
+
+  % Check that the reference is valid
+  value = dtig.Helpers.unpack(anyValue);
+  if isempty(value)
+    returnValue = createReturn(dtig.EReturnCode.FAILURE, strcat("Failed to unpack value: ", reference));
+    return;
+  end
+
+  DTIG_FOR(DTIG_PARAMETERS)
+
+  DTIG_IF(DTIG_INDEX == 0)
+  if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
+  DTIG_ELSE
+  elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
   DTIG_END_IF
     DTIG_ITEM_NAME = value.getValue();
   DTIG_END_FOR
@@ -205,9 +234,9 @@ DTIG_END_FOR
 
     DTIG_FOR(DTIG_OUTPUTS)
     DTIG_IF(DTIG_INDEX == 0)
-    if reference == DTIG_STR(DTIG_ITEM_NAME)
+    if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_ELSE
-    elseif reference == DTIG_STR(DTIG_ITEM_NAME)
+    elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
       anyValue = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE).newBuilder().setValue(DTIG_ITEM_NAME);
     DTIG_END_FOR
@@ -220,42 +249,6 @@ DTIG_END_FOR
   end
 
   returnValue.setValues(dtigOutputs);
-end
-DTIG_END_IF
-
-<DTIG_CALLBACK(SET_PARAMETER)>
-function returnValue = set_parameter(reference, anyValue)
-  DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
-  returnValue = createReturn(dtig.EReturnCode.FAILURE, "Model has no parameters");
-  return;
-  DTIG_ELSE
-
-  DTIG_FOR(DTIG_PARAMETERS)
-  global DTIG_ITEM_NAME;
-  DTIG_END_FOR
-
-  % Check that the reference is valid
-  value = dtig.Helpers.unpack(anyValue);
-  if isempty(value)
-    returnValue = createReturn(dtig.EReturnCode.FAILURE, strcat("Failed to unpack value: ", reference));
-    return;
-  end
-
-  DTIG_FOR(DTIG_PARAMETERS)
-
-  DTIG_IF(DTIG_INDEX == 0)
-  if reference == DTIG_STR(DTIG_ITEM_NAME)
-  DTIG_ELSE
-  elseif reference == DTIG_STR(DTIG_ITEM_NAME)
-  DTIG_END_IF
-    DTIG_ITEM_NAME = value.getValue();
-  DTIG_END_FOR
-  else
-    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown input: ", reference));
-    return;
-  end
-
-  returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
 DTIG_END_IF
 
@@ -280,9 +273,9 @@ DTIG_END_FOR
 
     DTIG_FOR(DTIG_PARAMETERS)
     DTIG_IF(DTIG_INDEX == 0)
-    if reference == DTIG_STR(DTIG_ITEM_NAME)
+    if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_ELSE
-    elseif reference == DTIG_STR(DTIG_ITEM_NAME)
+    elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
       anyValue = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE).newBuilder().setValue(DTIG_ITEM_NAME);
     DTIG_END_FOR
@@ -304,6 +297,9 @@ DTIG_IF(DTIG_INPUTS_LENGTH)
 % Inputs
 DTIG_FOR(DTIG_INPUTS)
 global DTIG_ITEM_NAME;
+DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
+DTIG_END_IF
 DTIG_END_FOR
 DTIG_END_IF
 
@@ -315,6 +311,9 @@ DTIG_IF(DTIG_ITEM_NAME IN DTIG_INPUTS_NAMES)
 % Output DTIG_ITEM_NAME is also defined as in input
 DTIG_ELSE
 global DTIG_ITEM_NAME;
+DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
+DTIG_END_IF
 DTIG_END_IF
 DTIG_END_FOR
 DTIG_END_IF
@@ -324,5 +323,8 @@ DTIG_IF(DTIG_PARAMETERS_LENGTH)
 % Parameters
 DTIG_FOR(DTIG_PARAMETERS)
 global DTIG_ITEM_NAME;
+DTIG_IF(HAS DTIG_ITEM_DEFAULT)
+DTIG_ITEM_NAME = DTIG_ITEM_DEFAULT;
+DTIG_END_IF
 DTIG_END_FOR
 DTIG_END_IF

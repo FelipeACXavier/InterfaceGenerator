@@ -50,8 +50,8 @@
     },
     {
       "id": 1,
-      "name": "Fixture",
-      "description": "Beam fixture",
+      "name": "Fixed",
+      "description": "Fixed constraint of the beam",
       "type": "fixture"
     }
   ]

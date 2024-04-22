@@ -10,9 +10,9 @@ from common.logging import *
 from tools import protobuf
 
 def main():
-    start_logger(LogLevel.TRACE)
+    start_logger(LogLevel.DEBUG)
     config = JsonConfiguration()
-    config.parse("config.json")
+    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/freecad/config.json")
 
     server_generator = None
     client_generator = None

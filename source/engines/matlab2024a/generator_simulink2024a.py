@@ -12,6 +12,7 @@ from interface.matlab_generator import ServerGenerator
 
 # Callbacks are defined at the module level
 engine_folder = os.path.dirname(__file__)
+template_folder = engine_folder + "/templates"
 
 class ServerGeneratorSimulink2024a(ServerGenerator):
     def __init__(self, output_file):
@@ -22,12 +23,9 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
 
     def generate(self, config : ModelConfigurationBase) -> VoidResult:
         self.config = config
-        template_dir = f'{Path(self.output_file).parent.absolute()}/templates'
-        file_system.create_dir(template_dir)
+        self.engine_template_file = f'{template_folder}/simulink_callbacks.m'
 
-        self.engine_template_file = f'{template_dir}/simulink_callbacks.m'
-
-        self.generate_model_config(f'{template_folder}/simulink_callbacks.m')
+        # self.generate_model_config(f'{template_folder}/simulink_callbacks.m')
 
         return super().generate(config)
 
@@ -38,7 +36,6 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
         with open(input_file, "r") as f:
             body = f.read() + "\n"
 
-        body += self.generate_model_members()
         body += self.generate_model_set_input()
         # body += self.generate_model_get_output()
         # body += self.generate_model_set_parameter()
@@ -46,34 +43,6 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
 
         with open(self.engine_template_file, "w") as f:
             f.write(body)
-
-    def generate_model_members(self) -> str:
-        body = f'% @callback({KEY_IMPORTS})\n'
-        body += f'% The model itself\n'
-        body += f'global sm;\n'
-
-        if self.config.has(KEY_INPUTS):
-            body += f'% Inputs\n'
-            body += f'global '
-            for cfg in self.config[KEY_INPUTS]:
-                body += f'{cfg[KEY_NAME]} '
-            body = body.rstrip() + f';\n\n'
-
-        if self.config.has(KEY_OUTPUTS):
-            body += f'% Outputs\n'
-            body += f'global '
-            for cfg in self.config[KEY_OUTPUTS]:
-                body += f'{cfg[KEY_NAME]} '
-            body = body.rstrip() + f';\n\n'
-
-        if self.config.has(KEY_PARAMETERS):
-            body += f'% Parameters\n'
-            body += f'global '
-            for cfg in self.config[KEY_PARAMETERS]:
-                body += f'{cfg[KEY_NAME]} '
-            body = body.rstrip() + f';\n\n'
-
-        return body
 
     def generate_model_set_input(self) -> str:
         body = f'\n% @callback({KEY_SET_INPUT})\n'
@@ -224,3 +193,15 @@ class ServerGeneratorSimulink2024a(ServerGenerator):
         body += f'end'
 
         return body
+
+    def parse_dtig_language(self, parser=None):
+        from language import parser
+
+        dtig_parser = parser.Parser(self.config)
+
+        # Define callbacks
+        dtig_parser.type_to_function = lambda variable_type: matlab.to_type(variable_type)
+        dtig_parser.to_proto_message = lambda variable_type: matlab.to_proto_message(variable_type)
+        dtig_parser.to_string = lambda variable_type: f'\"{variable_type}\"'
+
+        return super().parse_dtig_language(parser=dtig_parser)
