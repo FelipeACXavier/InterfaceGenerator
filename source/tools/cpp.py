@@ -64,6 +64,33 @@ def to_type(variable_type):
         return f'bool'
     elif variable_type == TYPE_BYTES:
         return f'std::string'
+    # More complex types
+    elif variable_type == TYPE_FORCE:
+        return f'double'
+    elif variable_type == TYPE_FIXTURE:
+        return f'double'
+    elif variable_type == TYPE_MATERIAL:
+        return f'std::string'
+    elif variable_type == TYPE_MESH:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_MAGNITUDE:
+        return f'double'
+    elif variable_type == TYPE_PROP_OBJECT:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_REFERENCE:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_DIRECTION:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_STATE:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_NAME:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_YOUNGS_MODULUS:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_POISSON_RATIO:
+        return f'std::string'
+    elif variable_type == TYPE_PROP_DENSITY:
+        return f'std::string'
 
 def to_proto_message(variable_type):
     if variable_type == TYPE_FLOAT_32:
@@ -92,6 +119,14 @@ def to_proto_message(variable_type):
         return f'dtig::MBool'
     elif variable_type == TYPE_BYTES:
         return f'dtig::MBytes'
+    elif variable_type == TYPE_FIXTURE:
+        return f'dtig::MConstraint'
+    elif variable_type == TYPE_FORCE:
+        return f'dtig::MConstraint'
+    elif variable_type == TYPE_MATERIAL:
+        return f'dtig::MMaterial'
+    elif variable_type == TYPE_MESH:
+        return f'dtig::MString'
 
 def create_structure():
     structure = create_default_structure()

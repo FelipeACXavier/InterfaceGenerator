@@ -94,7 +94,7 @@ class HppGeneratorRTI1516(HppGenerator):
 
         # Define callbacks
         dtig_parser.type_to_function = lambda variable_type: variable_type
-        dtig_parser.to_proto_message = lambda variable_type: python.to_proto_message(variable_type)
+        dtig_parser.to_proto_message = lambda variable_type: cpp.to_proto_message(variable_type)
         dtig_parser.to_string = lambda variable_type: f'\"{variable_type}\"'
 
         return super().parse_dtig_language(parser=dtig_parser)

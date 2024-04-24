@@ -1,9 +1,9 @@
 from os.path import basename
-from enum import Enum
+from enum import IntEnum
 from datetime import datetime
 from inspect import getframeinfo, stack
 
-class LogLevel(Enum):
+class LogLevel(IntEnum):
   ERROR     = 0
   WARNING   = 1
   INFO      = 2

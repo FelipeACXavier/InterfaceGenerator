@@ -156,8 +156,7 @@ void runFederate(const std::string& federateName, const std::string& fom, const 
   publishAndSubscribe();
   std::cout << "Published and Subscribed" << std::endl;
 
-  ObjectInstanceHandle objectHandle = registerObject();
-
+  registerObjects();
 
   dtig::MDTMessage sMessage;
   dtig::MStart startMessage;
@@ -234,7 +233,7 @@ void runFederate(const std::string& federateName, const std::string& fom, const 
   if (stopRet.code() != dtig::ReturnCode::SUCCESS)
     std::cout << "Failed to start: " << stopRet.error_message().value() << std::endl;
 
-  deleteObject(objectHandle);
+  deleteObjects();
 
   rtiamb->resignFederationExecution(NO_ACTION);
   std::cout << "Resigned from Federation" << std::endl;
@@ -304,9 +303,11 @@ void publishAndSubscribe()
 }
 
 <DTIG_METHOD(PRIVATE)>
-ObjectInstanceHandle registerObject()
+void registerObjects()
 {
-  return rtiamb->registerObjectInstance(rtiamb->getObjectClassHandle(L"ObjectRoot.Parameters"));
+  DTIG_FOR(DTIG_PARAMETERS)
+  mPDTIG_ITEM_NAME = rtiamb->registerObjectInstance(mAttrDTIG_ITEM_NAME);
+  DTIG_END_FOR
 }
 
 <DTIG_METHOD(PRIVATE)>
@@ -338,9 +339,11 @@ void advanceTime(double timestep)
 }
 
 <DTIG_METHOD(PRIVATE)>
-void deleteObject(ObjectInstanceHandle objectHandle)
+void deleteObjects()
 {
-  rtiamb->deleteObjectInstance(objectHandle, toVariableLengthData(""));
+  DTIG_FOR(DTIG_PARAMETERS)
+  rtiamb->deleteObjectInstance(mPDTIG_ITEM_NAME, toVariableLengthData(""));
+  DTIG_END_FOR
 }
 
 <DTIG_METHOD(PRIVATE)>
@@ -367,6 +370,419 @@ dtig::MReturnValue SendMessage(const google::protobuf::Message& message)
   }
 
   return result;
+}
+
+<DTIG_CALLBACK(INITIALIZE)>
+// ===================================================
+// INITIALIZE callback
+void initializeHandles()
+{
+  try
+  {
+    // Parameters
+    DTIG_FOR(DTIG_PARAMETERS)
+    mAttrDTIG_ITEM_NAME = rtiamb->getObjectClassHandle(L"DTIG_ITEM_NAMESPACE.DTIG_ITEM_NAME");
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    mPsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_OBJECT), rtiamb->getAttributeHandle(mAttrDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_OBJECT")});
+    mPsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_REFERENCE), rtiamb->getAttributeHandle(mAttrDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_REFERENCE")});
+    mPsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_DIRECTION), rtiamb->getAttributeHandle(mAttrDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_DIRECTION")});
+    DTIG_ELSE
+    mPsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_VALUE), rtiamb->getAttributeHandle(mAttrDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_VALUE")});
+    DTIG_END_IF
+    DTIG_END_FOR
+
+    // Inputs
+    DTIG_FOR(DTIG_INPUTS)
+    mIDTIG_ITEM_NAME = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE.DTIG_ITEM_NAME");
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    mIsDTIG_ITEM_NAME.insert({rtiamb->getParameterHandle(mIDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_OBJECT"), DTIG_STR(DTIG_TYPE_PROP_OBJECT)});
+    mIsDTIG_ITEM_NAME.insert({rtiamb->getParameterHandle(mIDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_REFERENCE"), DTIG_STR(DTIG_TYPE_PROP_REFERENCE)});
+    mIsDTIG_ITEM_NAME.insert({rtiamb->getParameterHandle(mIDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_DIRECTION"), DTIG_STR(DTIG_TYPE_PROP_DIRECTION)});
+    DTIG_ELSE
+    mIsDTIG_ITEM_NAME.insert({rtiamb->getParameterHandle(mIDTIG_ITEM_NAME, L"DTIG_TYPE_PROP_VALUE"), DTIG_STR(DTIG_TYPE_PROP_VALUE)});
+    DTIG_END_IF
+    DTIG_END_FOR
+
+    // Outputs
+    DTIG_FOR(DTIG_OUTPUTS)
+    mODTIG_ITEM_NAME = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE.DTIG_ITEM_NAME");
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    mOsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_VALUE), rtiamb->getParameterHandle(mODTIG_ITEM_NAME, L"DTIG_TYPE_PROP_VALUE")});
+    mOsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_OBJECT), rtiamb->getParameterHandle(mODTIG_ITEM_NAME, L"DTIG_TYPE_PROP_OBJECT")});
+    mOsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_REFERENCE), rtiamb->getParameterHandle(mODTIG_ITEM_NAME, L"DTIG_TYPE_PROP_REFERENCE")});
+    mOsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_DIRECTION), rtiamb->getParameterHandle(mODTIG_ITEM_NAME, L"DTIG_TYPE_PROP_DIRECTION")});
+    DTIG_ELSE
+    mOsDTIG_ITEM_NAME.insert({DTIG_STR(DTIG_TYPE_PROP_VALUE), rtiamb->getParameterHandle(mODTIG_ITEM_NAME, L"DTIG_TYPE_PROP_VALUE")});
+    DTIG_END_IF
+    DTIG_END_FOR
+  }
+  catch (NameNotFound error)
+  {
+    std::wcout << "Failed to initialize handles: " << error.what() << std::endl;
+  }
+}
+
+<DTIG_CALLBACK(SET_INPUT)>
+// ===================================================
+// SET_INPUT callback
+void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues)
+{
+  DTIG_IF(NOT DTIG_INPUTS)
+  return;
+  DTIG_ELSE
+  dtig::MInput inputMessage;
+
+  DTIG_FOR(DTIG_INPUTS)
+  DTIG_IF(DTIG_INDEX == 0)
+  if (interaction == mIDTIG_ITEM_NAME)
+  DTIG_ELSE
+  else if (interaction == mIDTIG_ITEM_NAME)
+  DTIG_END_IF
+  {
+    DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value = ProtoInputFromDTIG_ITEM_NAME(parameterValues);
+    *inputMessage.mutable_inputs()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+    inputMessage.mutable_inputs()->add_values()->PackFrom(value);
+  }
+  DTIG_END_FOR
+  else
+  {
+    std::wcout << "Unknown input handler: " << interaction.toString() << std::endl;
+    return;
+  }
+
+  dtig::MDTMessage message;
+  *message.mutable_set_input() = inputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+    std::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;
+  DTIG_END_IF
+}
+DTIG_DEF DTIG_READ_STRING(TYPE, NAME, ITEM)
+DTIG_IF(DTIG>ITEM == 0)
+    if (item == DTIG_STR(DTIG>NAME))
+DTIG_ELSE
+    else if (item == DTIG_STR(DTIG>NAME))
+DTIG_END_IF
+DTIG_IF(DTIG>TYPE == DTIG>NAME)
+      anyValue.mutable_DTIG>TYPE()->set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG>TYPE)>(it->second));
+DTIG_ELSE
+      anyValue.mutable_DTIG>TYPE()->set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG>TYPE)>(it->second));
+DTIG_END_IF
+DTIG_END_DEF
+
+DTIG_DEF DTIG_READ_FROM_DATA (TYPE, PREFIX)
+DTIG_IF(DTIG>TYPE == DTIG_TYPE_PROP_VALUE)
+DTIG_READ_STRING(DTIG>TYPE, DTIG_ITEM_TYPE, DTIG>PREFIX)
+DTIG_ELSE
+DTIG_READ_STRING(DTIG>TYPE, DTIG>TYPE, DTIG>PREFIX)
+DTIG_END_IF
+DTIG_END_DEF
+
+DTIG_FOR(DTIG_INPUTS)
+
+// Set the input DTIG_ITEM_NAME:
+DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) DTIG>CLASSNAME::ProtoInputFromDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles)
+{
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) anyValue;
+  for (auto it = handles.begin(); it != handles.end(); ++it)
+  {
+    std::string item = mIsDTIG_ITEM_NAME[it->first];
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_MAGNITUDE, 0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_OBJECT,    1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_REFERENCE, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DIRECTION, 3)
+    DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_STATE,          0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_NAME,           1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_YOUNGS_MODULUS, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_POISSON_RATIO,  3)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DENSITY,        4)
+    DTIG_ELSE
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_VALUE,          0)
+    if (item == DTIG_STR(DTIG_TYPE_PROP_VALUE))
+    DTIG_END_IF
+    else
+      std::cout << "Unknown handle: " << item << std::endl;
+  }
+  return anyValue;
+}
+DTIG_END_FOR
+
+<DTIG_CALLBACK(GET_OUTPUT)>
+// ===================================================
+// GET_OUTPUT callback
+void GetOutput()
+{
+  DTIG_IF(NOT DTIG_OUTPUTS)
+  return;
+  DTIG_ELSE
+  dtig::MOutput outputMessage;
+  DTIG_FOR(DTIG_OUTPUTS)
+  *outputMessage.mutable_outputs()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+  DTIG_END_FOR
+
+  dtig::MDTMessage message;
+  *message.mutable_get_output() = outputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to get outputs: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  DTIG_FOR(DTIG_OUTPUTS)
+
+  ParameterHandleValueMap paramDTIG_ITEM_NAME = ParameterMapFromDTIG_ITEM_NAME(ret.values().values(DTIG_INDEX));
+  rtiamb->sendInteraction(mODTIG_ITEM_NAME, paramDTIG_ITEM_NAME, toVariableLengthData(mName.c_str()));
+  DTIG_END_FOR
+
+  DTIG_END_IF
+}
+
+DTIG_DEF DTIG_WRITE_STRING(TYPE, NAME, PREFIX)
+DTIG_IF(DTIG>TYPE == DTIG>NAME)
+  DTIG_TYPE_TO_FUNCTION(DTIG>NAME) tmpDTIG>TYPE = message.DTIG>TYPE().value();
+  toWrite[mDTIG>PREFIXDTIG_ITEM_NAME.at(DTIG_STR(DTIG>TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(DTIG>NAME)>(&tmpDTIG>TYPE);
+DTIG_ELSE
+  DTIG_TYPE_TO_FUNCTION(DTIG>NAME) tmpDTIG>TYPE = message.DTIG>TYPE();
+  toWrite[mDTIG>PREFIXDTIG_ITEM_NAME.at(DTIG_STR(DTIG>TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(DTIG>NAME)>(&tmpDTIG>TYPE);
+DTIG_END_IF
+DTIG_END_DEF
+
+DTIG_DEF DTIG_WRITE_TO_DATA (TYPE, PREFIX)
+DTIG_IF(DTIG>TYPE == DTIG_TYPE_PROP_VALUE)
+DTIG_WRITE_STRING(DTIG>TYPE, DTIG_ITEM_TYPE, DTIG>PREFIX)
+DTIG_ELSE
+DTIG_WRITE_STRING(DTIG>TYPE, DTIG>TYPE, DTIG>PREFIX)
+DTIG_END_IF
+DTIG_END_DEF
+
+DTIG_FOR(DTIG_OUTPUTS)
+
+// Update the output DTIG_ITEM_NAME:
+rti1516::ParameterHandleValueMap DTIG>CLASSNAME::ParameterMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage)
+{
+  ParameterHandleValueMap toWrite;
+
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) message;
+  if (!anyMessage.UnpackTo(&message))
+  {
+    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
+    return toWrite;
+  }
+
+  DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_MAGNITUDE, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_DIRECTION, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_OBJECT, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_REFERENCE, Os)
+
+  DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_NAME, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_STATE, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_DENSITY, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_YOUNGS_MODULUS, Os)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_POISSON_RATIO, Os)
+  DTIG_ELSE
+
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_VALUE, Os)
+  DTIG_END_IF
+
+  return toWrite;
+}
+DTIG_END_FOR
+
+<DTIG_CALLBACK(SET_PARAMETER)>
+// ===================================================
+// SET_PARAMETER callback
+void SetParameters(const rti1516::ObjectInstanceHandle& handler, const rti1516::AttributeHandleValueMap& attributes)
+{
+  DTIG_IF(NOT DTIG_PARAMETER)
+  return;
+  DTIG_ELSE
+  DTIG_FOR(DTIG_PARAMETERS)
+  DTIG_IF(DTIG_INDEX == 0)
+  if (handler == mPDTIG_ITEM_NAME)
+  DTIG_ELSE
+  else if (handler == mPDTIG_ITEM_NAME)
+  DTIG_END_IF
+    setAttributeDTIG_ITEM_NAME(attributes);
+  DTIG_END_FOR
+  else
+    std::wcout << "Unknow parameter handler: " << handler.toString() << std::endl;
+  DTIG_END_IF
+}
+
+DTIG_FOR(DTIG_PARAMETERS)
+std::string DTIG>CLASSNAME::getHandleDTIG_ITEM_NAME(const rti1516::AttributeHandle& handle) const
+{
+  for (auto it = mPsDTIG_ITEM_NAME.begin(); it != mPsDTIG_ITEM_NAME.end(); ++it)
+    if (it->second == handle)
+      return it->first;
+
+  return std::string();
+}
+
+// Set the attribute (parameter) DTIG_ITEM_NAME:
+void DTIG>CLASSNAME::setAttributeDTIG_ITEM_NAME(const rti1516::AttributeHandleValueMap& attributes)
+{
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) anyValue;
+  for (auto it = attributes.begin(); it != attributes.end(); ++it)
+  {
+    std::string item = getHandleDTIG_ITEM_NAME(it->first);
+    if (item.empty())
+      continue;
+
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_MAGNITUDE, 0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_OBJECT,    1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_REFERENCE, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DIRECTION, 3)
+
+    DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_STATE,          0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_NAME,           1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_YOUNGS_MODULUS, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_POISSON_RATIO,  3)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DENSITY,        4)
+
+    DTIG_ELSE
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_VALUE,          0)
+    if (item == DTIG_STR(DTIG_TYPE_PROP_VALUE))
+    DTIG_END_IF
+    else
+      std::cout << "Unknown handle: " << item << std::endl;
+  }
+
+  dtig::MSetParameter paramMessage;
+  *paramMessage.mutable_parameters()->add_identifiers() = DTIG_STR(DTIG_ITEM_TYPE);
+  paramMessage.mutable_parameters()->add_values()->PackFrom(anyValue);
+
+  dtig::MDTMessage message;
+  *message.mutable_set_parameter() = paramMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+    std::cout << "Failed to set parameters: " << ret.error_message().value() << std::endl;
+}
+
+DTIG_END_FOR
+
+<DTIG_CALLBACK(GET_PARAMETER)>
+// ===================================================
+// GET_PARAMETER callback
+void GetParameter(const ObjectInstanceHandle& handler)
+{
+  DTIG_IF(NOT DTIG_PARAMETER)
+  return;
+  DTIG_ELSE
+  DTIG_FOR(DTIG_PARAMETERS)
+  DTIG_IF(DTIG_INDEX == 0)
+  if (handler == mPDTIG_ITEM_NAME)
+  DTIG_ELSE
+  else if (handler == mPDTIG_ITEM_NAME)
+  DTIG_END_IF
+    getAttributeDTIG_ITEM_NAME();
+  DTIG_END_FOR
+  else
+    std::wcout << "Unknow parameter handler: " << handler.toString() << std::endl;
+  DTIG_END_IF
+}
+
+DTIG_FOR(DTIG_PARAMETERS)
+
+// Get the attribute (parameter) DTIG_ITEM_NAME:
+void DTIG>CLASSNAME::getAttributeDTIG_ITEM_NAME()
+{
+  dtig::MGetParameter paramMessage;
+  *paramMessage.mutable_parameters()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+
+  dtig::MDTMessage message;
+  *message.mutable_get_parameter() = paramMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to get parameters: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  AttributeHandleValueMap attrDTIG_ITEM_NAME = AttributeMapFromDTIG_ITEM_NAME(ret.values().values(DTIG_INDEX));
+  rtiamb->updateAttributeValues(mPDTIG_ITEM_NAME, attrDTIG_ITEM_NAME, toVariableLengthData(mName.c_str()));
+}
+
+rti1516::AttributeHandleValueMap DTIG>CLASSNAME::AttributeMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage)
+{
+  AttributeHandleValueMap toWrite;
+
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) message;
+  if (!anyMessage.UnpackTo(&message))
+  {
+    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
+    return toWrite;
+  }
+
+  DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_MAGNITUDE, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_DIRECTION, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_OBJECT, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_REFERENCE, Ps)
+  DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_NAME, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_STATE, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_DENSITY, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_YOUNGS_MODULUS, Ps)
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_POISSON_RATIO, Ps)
+  DTIG_ELSE
+
+  DTIG_WRITE_TO_DATA(DTIG_TYPE_PROP_VALUE, Ps)
+  DTIG_END_IF
+
+  return toWrite;
+}
+DTIG_END_FOR
+
+
+<DTIG_CALLBACK(PUBLISH)>
+// ===================================================
+// PUBLISH callback
+void SetupPublishers()
+{
+  // Define attributes (parameters) published by this class
+  DTIG_FOR(DTIG_PARAMETERS)
+  AttributeHandleSet attrDTIG_ITEM_NAME;
+  for (const auto& pair : mPsDTIG_ITEM_NAME)
+    attrDTIG_ITEM_NAME.insert(pair.second);
+
+  rtiamb->publishObjectClassAttributes(mAttrDTIG_ITEM_NAME, attrDTIG_ITEM_NAME);
+  DTIG_END_FOR
+
+  // Define outputs published by this class
+  DTIG_FOR(DTIG_OUTPUTS)
+  rtiamb->publishInteractionClass(mODTIG_ITEM_NAME);
+  DTIG_END_FOR
+}
+
+<DTIG_CALLBACK(SUBSCRIBE)>
+// ===================================================
+// SUBSCRIBE callback
+void SetupSubscribers()
+{
+  // Define attributes (parameters) to which this class subscribes
+  DTIG_FOR(DTIG_PARAMETERS)
+  AttributeHandleSet attrDTIG_ITEM_NAME;
+  for (const auto& pair : mPsDTIG_ITEM_NAME)
+    attrDTIG_ITEM_NAME.insert(pair.second);
+
+  rtiamb->subscribeObjectClassAttributes(mAttrDTIG_ITEM_NAME, attrDTIG_ITEM_NAME, true);
+  DTIG_END_FOR
+
+  // Define inputs to which this class subscribes
+  DTIG_FOR(DTIG_INPUTS)
+  rtiamb->subscribeInteractionClass(mIDTIG_ITEM_NAME);
+  DTIG_END_FOR
 }
 
 <DTIG_MAIN>
@@ -443,232 +859,4 @@ int main(int argc, char *argv[])
   }
 
   return 0;
-}
-
-<DTIG_CALLBACK(INITIALIZE)>
-void initializeHandles()
-{
-  try
-  {
-    DTIG_FOR(DTIG_PARAMETERS)
-    DTIG_IF(DTIG_INDEX == 0)
-
-    mAttributeHandler = rtiamb->getObjectClassHandle(L"DTIG_ITEM_NAMESPACE");
-    DTIG_END_IF
-    mAttributeHandlers.insert({DTIG_STR(DTIG_ITEM_NAME), rtiamb->getAttributeHandle(mAttributeHandler, L"DTIG_ITEM_NAME")});
-
-    DTIG_END_FOR
-
-    DTIG_FOR(DTIG_INPUTS)
-    DTIG_IF(DTIG_INDEX == 0)
-
-    mInputHandler = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE");
-    DTIG_END_IF
-    mInputHandlers.insert({rtiamb->getParameterHandle(mInputHandler, L"DTIG_ITEM_NAME"), DTIG_STR(DTIG_ITEM_NAME)});
-    DTIG_END_FOR
-
-    DTIG_FOR(DTIG_OUTPUTS)
-    DTIG_IF(DTIG_INDEX == 0)
-
-    mOutputHandler = rtiamb->getInteractionClassHandle(L"DTIG_ITEM_NAMESPACE");
-    DTIG_END_IF
-    mOutputHandlers.insert({DTIG_STR(DTIG_ITEM_NAME), rtiamb->getParameterHandle(mOutputHandler, L"DTIG_ITEM_NAME")});
-    DTIG_END_FOR
-  }
-  catch (NameNotFound error)
-  {
-    std::wcout << "Failed to initialize handles: " << error.what() << std::endl;
-  }
-}
-
-<DTIG_CALLBACK(SET_INPUT)>
-void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues)
-{
-  dtig::MInput inputMessage;
-
-  for (auto it = parameterValues.begin(); it != parameterValues.end(); ++it)
-  {
-    std::string item = mInputHandlers[it->first];
-    *inputMessage.mutable_inputs()->add_identifiers() = item;
-    DTIG_FOR(DTIG_INPUTS)
-    DTIG_IF(DTIG_INDEX == 0)
-    if (item == DTIG_STR(DTIG_ITEM_NAME))
-    DTIG_ELSE
-    else if (item == DTIG_STR(DTIG_ITEM_NAME))
-    DTIG_END_IF
-    {
-      DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value;
-      value.set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(it->second));
-      inputMessage.mutable_inputs()->add_values()->PackFrom(value);
-    }
-    DTIG_END_FOR
-    else
-    {
-      std::cout << "Unknown input: " << item << std::endl;
-      return;
-    }
-  }
-
-  dtig::MDTMessage message;
-  *message.mutable_set_input() = inputMessage;
-  dtig::MReturnValue ret = SendMessage(message);
-  if (ret.code() != dtig::ReturnCode::SUCCESS)
-    std::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;
-}
-
-<DTIG_CALLBACK(GET_OUTPUT)>
-void GetOutput()
-{
-  dtig::MOutput outputMessage;
-  DTIG_IF(DTIG_OUTPUTS)
-  DTIG_FOR(DTIG_OUTPUTS)
-  *outputMessage.mutable_outputs()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
-  DTIG_END_FOR
-
-  dtig::MDTMessage message;
-  *message.mutable_get_output() = outputMessage;
-  dtig::MReturnValue ret = SendMessage(message);
-  if (ret.code() != dtig::ReturnCode::SUCCESS)
-  {
-    std::cout << "Failed to get outputs: " << ret.error_message().value() << std::endl;
-    return;
-  }
-
-  ParameterHandleValueMap parameters;
-  DTIG_FOR(DTIG_OUTPUTS)
-
-  std::string idDTIG_ITEM_NAME = ret.values().identifiers(DTIG_INDEX);
-  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) valueDTIG_ITEM_NAME;
-  if (ret.values().values(DTIG_INDEX).UnpackTo(&valueDTIG_ITEM_NAME))
-  {
-    DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE) vDTIG_ITEM_NAME = valueDTIG_ITEM_NAME.value();
-    parameters[mOutputHandlers.at(idDTIG_ITEM_NAME)] = toData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(&vDTIG_ITEM_NAME);
-  }
-  else
-  {
-    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
-  }
-
-  DTIG_END_FOR
-
-  rtiamb->sendInteraction(mOutputHandler, parameters, toVariableLengthData(mName.c_str()));
-  DTIG_END_IF
-}
-
-<DTIG_METHOD(PUBLIC)>
-std::string getAttribute(const rti1516::AttributeHandle& handle) const
-{
-  for (auto it = mAttributeHandlers.begin(); it != mAttributeHandlers.end(); ++it)
-    if (it->second == handle)
-      return it->first;
-
-  return std::string();
-}
-
-<DTIG_CALLBACK(SET_PARAMETER)>
-void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes)
-{
-  dtig::MSetParameter paramMessage;
-
-  for (auto it = attributes.begin(); it != attributes.end(); ++it)
-  {
-    std::string item = getAttribute(it->first);
-    if (item.empty())
-      continue;
-
-    *paramMessage.mutable_parameters()->add_identifiers() = item;
-    DTIG_FOR(DTIG_PARAMETERS)
-    DTIG_IF(DTIG_INDEX == 0)
-    if (item == DTIG_STR(DTIG_ITEM_NAME))
-    DTIG_ELSE
-    else if (item == DTIG_STR(DTIG_ITEM_NAME))
-    DTIG_END_IF
-    {
-      DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value;
-      value.set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(it->second));
-      paramMessage.mutable_parameters()->add_values()->PackFrom(value);
-    }
-    DTIG_END_FOR
-    else
-    {
-      std::cout << "Unknown parameter: " << item << std::endl;
-      return;
-    }
-  }
-
-  dtig::MDTMessage message;
-  *message.mutable_set_parameter() = paramMessage;
-  dtig::MReturnValue ret = SendMessage(message);
-  if (ret.code() != dtig::ReturnCode::SUCCESS)
-    std::cout << "Failed to set parameters: " << ret.error_message().value() << std::endl;
-}
-
-<DTIG_CALLBACK(GET_PARAMETER)>
-void GetParameter(const ObjectInstanceHandle& handler)
-{
-  DTIG_IF(DTIG_PARAMETERS)
-  dtig::MGetParameter paramMessage;
-  DTIG_FOR(DTIG_PARAMETERS)
-  *paramMessage.mutable_parameters()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
-  DTIG_END_FOR
-
-  dtig::MDTMessage message;
-  *message.mutable_get_parameter() = paramMessage;
-  dtig::MReturnValue ret = SendMessage(message);
-  if (ret.code() != dtig::ReturnCode::SUCCESS)
-  {
-    std::cout << "Failed to get parameters: " << ret.error_message().value() << std::endl;
-    return;
-  }
-
-  AttributeHandleValueMap attributesMap;
-  DTIG_FOR(DTIG_PARAMETERS)
-
-  std::string idDTIG_ITEM_NAME = ret.values().identifiers(DTIG_INDEX);
-  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) valueDTIG_ITEM_NAME;
-  if (ret.values().values(DTIG_INDEX).UnpackTo(&valueDTIG_ITEM_NAME))
-  {
-    DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE) vDTIG_ITEM_NAME = valueDTIG_ITEM_NAME.value();
-    attributesMap[mAttributeHandlers.at(idDTIG_ITEM_NAME)] = toData<DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)>(&vDTIG_ITEM_NAME);
-  }
-  else
-  {
-    std::cout << "Failed to unpack parameter: DTIG_ITEM_NAME" << std::endl;
-  }
-  DTIG_END_FOR
-
-  rtiamb->updateAttributeValues(handler, attributesMap, toVariableLengthData(mName.c_str()));
-  DTIG_END_IF
-}
-
-<DTIG_CALLBACK(PUBLISH)>
-void SetupPublishers()
-{
-  DTIG_IF(DTIG_PARAMETERS)
-  AttributeHandleSet pubAttributes;
-  for (const auto& pair : mAttributeHandlers)
-    pubAttributes.insert(pair.second);
-
-  rtiamb->publishObjectClassAttributes(mAttributeHandler, pubAttributes);
-  DTIG_END_IF
-
-  DTIG_IF(DTIG_OUTPUTS)
-  rtiamb->publishInteractionClass(mOutputHandler);
-  DTIG_END_IF
-}
-
-<DTIG_CALLBACK(SUBSCRIBE)>
-void SetupSubscribers()
-{
-  DTIG_IF(DTIG_PARAMETERS)
-  AttributeHandleSet subAttributes;
-  for (const auto& pair : mAttributeHandlers)
-    subAttributes.insert(pair.second);
-
-  rtiamb->subscribeObjectClassAttributes(mAttributeHandler, subAttributes, true);
-  DTIG_END_IF
-
-  DTIG_IF(DTIG_INPUTS)
-  rtiamb->subscribeInteractionClass(mInputHandler);
-  DTIG_END_IF
 }

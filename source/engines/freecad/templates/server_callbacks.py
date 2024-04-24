@@ -374,8 +374,7 @@ def set_parameters(reference, any_value):
         if value.value:
             parameter.Force = value.value.value
 
-        DTIG_ELSE
-        DTIG_IF(DTIG_ITEM_TYPE == TYPE_SOLID)
+        DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_MATERIAL)
 
         # Update material
         mat = parameter.Material
@@ -385,8 +384,7 @@ def set_parameters(reference, any_value):
         mat['Density'] = value.density
         parameter.Material = mat
 
-        DTIG_ELSE
-        DTIG_IF(DTIG_ITEM_TYPE == TYPE_FIXTURE)
+        DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_FIXTURE)
 
         if not value.object:
             return self.return_code(dtig_code.FAILURE, f"No object provided: {reference}")
@@ -400,7 +398,6 @@ def set_parameters(reference, any_value):
 
         parameter.References = [(obj_ref, value.reference.value)]
 
-        DTIG_END_IF
         DTIG_END_IF
 
         self.analysis_object.addObject(parameter)
@@ -429,15 +426,14 @@ def get_parameter(references):
             property_value = self.get_object(reference)
             if not property_value:
                 return self.return_code(dtig_code.FAILURE, f'No property: {reference}')
-            DTIG_IF(DTIG_ITEM_TYPE == TYPE_SOLID)
+            DTIG_IF(DTIG_ITEM_TYPE == TYPE_MATERIAL)
 
             any_value.name = property_value.Material['Name']
             any_value.youngs_modulus = property_value.Material['YoungsModulus']
             any_value.poisson_ratio = property_value.Material['PoissonRatio']
             any_value.density = property_value.Material['Density']
 
-            DTIG_ELSE
-            DTIG_IF(DTIG_ITEM_TYPE == TYPE_FIXTURE)
+            DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_FIXTURE)
 
             any_value.object.value    = property_value.References[0][0].Label
             any_value.reference.value = ", ".join(map(str, property_value.References[0][1]))
@@ -446,7 +442,6 @@ def get_parameter(references):
 
             any_value.value = property_value
 
-            DTIG_END_IF
             DTIG_END_IF
 
             any_msg = any_pb2.Any()

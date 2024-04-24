@@ -100,7 +100,7 @@ def to_proto_message(variable_type):
         return f'dtig_utils.MConstraint()'
     elif variable_type == TYPE_FORCE:
         return f'dtig_utils.MConstraint()'
-    elif variable_type == TYPE_SOLID:
+    elif variable_type == TYPE_MATERIAL:
         return f'dtig_utils.MMaterial()'
     elif variable_type == TYPE_MESH:
         return f'dtig_utils.MString()'

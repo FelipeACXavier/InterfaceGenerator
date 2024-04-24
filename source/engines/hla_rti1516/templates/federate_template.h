@@ -7,7 +7,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <google/protobuf/message.h>
+#include <google/protobuf/any.h>
+
 #include "dtig/return_value.pb.h"
 
 #define READY_TO_RUN "ReadyToRun"
@@ -35,20 +36,24 @@ std::string mName;
 int mClient = -1;
 char mBuffer[1024] = {0};
 
-DTIG_IF(DTIG_PARAMETERS)
-rti1516::ObjectClassHandle mAttributeHandler;
-std::map<std::string, rti1516::AttributeHandle> mAttributeHandlers;
-DTIG_END_IF
+// Parameter handles
+DTIG_FOR(DTIG_PARAMETERS)
+rti1516::ObjectClassHandle mAttrDTIG_ITEM_NAME;
+rti1516::ObjectInstanceHandle mPDTIG_ITEM_NAME;
+std::map<std::string, rti1516::AttributeHandle> mPsDTIG_ITEM_NAME;
+DTIG_END_FOR
 
-DTIG_IF(DTIG_INPUTS)
-rti1516::InteractionClassHandle mInputHandler;
-std::map<rti1516::ParameterHandle, std::string> mInputHandlers;
-DTIG_END_IF
+// Input handles
+DTIG_FOR(DTIG_INPUTS)
+rti1516::InteractionClassHandle mIDTIG_ITEM_NAME;
+std::map<rti1516::ParameterHandle, std::string> mIsDTIG_ITEM_NAME;
+DTIG_END_FOR
 
-DTIG_IF(DTIG_OUTPUTS)
-rti1516::InteractionClassHandle mOutputHandler;
-std::map<std::string, rti1516::ParameterHandle> mOutputHandlers;
-DTIG_END_IF
+// Output handles
+DTIG_FOR(DTIG_OUTPUTS)
+rti1516::InteractionClassHandle mODTIG_ITEM_NAME;
+std::map<std::string, rti1516::ParameterHandle> mOsDTIG_ITEM_NAME;
+DTIG_END_FOR
 
 <DTIG_METHOD(PRIVATE)>
 
@@ -66,6 +71,26 @@ DTIG>CALLBACK(SET_INPUT)
 DTIG>CALLBACK(GET_OUTPUT)
 
 // ==============================
+// Generated methods
+// Parameters
+DTIG_FOR(DTIG_PARAMETERS)
+void getAttributeDTIG_ITEM_NAME();
+void setAttributeDTIG_ITEM_NAME(const rti1516::AttributeHandleValueMap& handles);
+std::string getHandleDTIG_ITEM_NAME(const rti1516::AttributeHandle& handle) const;
+rti1516::AttributeHandleValueMap AttributeMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
+DTIG_END_FOR
+
+// Inputs
+DTIG_FOR(DTIG_INPUTS)
+DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) ProtoInputFromDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles);
+DTIG_END_FOR
+
+// Outpus
+DTIG_FOR(DTIG_OUTPUTS)
+rti1516::ParameterHandleValueMap ParameterMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
+DTIG_END_FOR
+
+// ==============================
 // Common calls
 void waitForUser();
 void enableTimePolicy();
@@ -73,15 +98,14 @@ void publishAndSubscribe();
 void updateAttributeValues(rti1516::ObjectInstanceHandle objectHandle);
 void sendInteraction();
 void advanceTime(double timestep);
-void deleteObject(rti1516::ObjectInstanceHandle objectHandle);
-std::string getAttribute(const rti1516::AttributeHandle& handle) const;
 
-rti1516::ObjectInstanceHandle registerObject();
+void registerObjects();
+void deleteObjects();
 
 dtig::MReturnValue SendMessage(const google::protobuf::Message& message);
 
 template<typename T>
-rti1516::VariableLengthData toData(T* s)
+rti1516::VariableLengthData toData(const T* s)
 {
   rti1516::VariableLengthData variableLengthData;
   if (s)
@@ -90,11 +114,11 @@ rti1516::VariableLengthData toData(T* s)
   return variableLengthData;
 }
 
-rti1516::VariableLengthData toData(char* s)
+rti1516::VariableLengthData toData(std::string* s)
 {
   rti1516::VariableLengthData variableLengthData;
   if (s)
-    variableLengthData.setData(s, strlen(s));
+    variableLengthData.setData(s->c_str(), s->size());
 
   return variableLengthData;
 }
@@ -109,43 +133,19 @@ T fromData(rti1516::VariableLengthData data)
 void InitializeHandles();
 
 <DTIG_CALLBACK(PUBLISH)>
-DTIG_IF(DTIG_PARAMETERS)
 void SetupPublishers();
-DTIG_ELSE
-// No publishers
-DTIG_END_IF
 
 <DTIG_CALLBACK(SUBSCRIBE)>
-DTIG_IF(DTIG_PARAMETERS)
 void SetupSubscribers();
-DTIG_ELSE
-// No subscribers
-DTIG_END_IF
 
 <DTIG_CALLBACK(SET_INPUT)>
-DTIG_IF(DTIG_INPUTS)
 void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516::ParameterHandleValueMap& parameterValues);
-DTIG_ELSE
-// No inputs
-DTIG_END_IF
 
 <DTIG_CALLBACK(GET_OUTPUT)>
-DTIG_IF(DTIG_INPUTS)
 void GetOutput();
-DTIG_ELSE
-// No outputs
-DTIG_END_IF
 
 <DTIG_CALLBACK(SET_PARAMETER)>
-DTIG_IF(DTIG_PARAMETERS)
 void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes);
-DTIG_ELSE
-// No parameters to set
-DTIG_END_IF
 
 <DTIG_CALLBACK(GET_PARAMETER)>
-DTIG_IF(DTIG_PARAMETERS)
 void GetParameter(const ObjectInstanceHandle& handler);
-DTIG_ELSE
-// No parameters to get
-DTIG_END_IF

@@ -147,7 +147,6 @@ class GeneratorBase():
         if self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]:
             body += self.callbacks[KEY_CALLBACK][KEY_IMPORTS][KEY_BODY]
 
-
         return Result(body + "\n")
 
     def generate_states(self) -> Result:
@@ -265,7 +264,6 @@ class GeneratorBase():
     def parse_language(self, parser, outer_key):
         for key in self.callbacks[outer_key]:
             if self.callbacks[outer_key][key][KEY_BODY]:
-                LOG_DEBUG(f'Parsing: {outer_key}: {type(self.callbacks[outer_key][key][KEY_BODY])}')
                 if isinstance(self.callbacks[outer_key][key][KEY_BODY], str):
                     self.callbacks[outer_key][key][KEY_BODY] = parser.parse(self.callbacks[outer_key][key][KEY_BODY]) + "\n"
                 else:

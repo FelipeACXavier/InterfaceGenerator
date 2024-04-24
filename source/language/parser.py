@@ -2,10 +2,9 @@ import re
 
 from common.keys import *
 from common.logging import *
+from common.json_configuration import JsonConfiguration
 
 from lark import Lark, Transformer, v_args
-
-from common.json_configuration import JsonConfiguration
 
 # TODO: How to improve this? For now we need to go through the for loop at least once
 class default_list(list):
@@ -39,7 +38,11 @@ lark_grammar= r"""
     ?term: factor (_mul_op factor)*
     ?factor: _unary_op factor | atom
 
-    ?atom: NAME     -> var
+    ?argument: test ("," argument)*
+    ?function_call: NAME "(" argument ")"
+
+    ?atom: function_call
+        | NAME     -> var
         | NUMBER
         | "(" test ")"
         | "NONE"    -> const_none
@@ -65,9 +68,11 @@ class CalculateCondition(Transformer):
     from operator import add, sub, mul, truediv as div, neg
     number = float
 
-    def __init__(self, config, variable_callback):
+    def __init__(self, config, variable_callback, to_proto_message, type_to_function):
         self.config = config
         self.get_variable = variable_callback
+        self.to_proto_message = to_proto_message
+        self.type_to_function = type_to_function
 
     def program(self, tree):
         LOG_TRACE(f'tree: {tree}')
@@ -129,6 +134,17 @@ class CalculateCondition(Transformer):
         else:
             raise Exception(f"Unknown arithmetic operator: {op}")
 
+    def argument(self, first, rest):
+        LOG_TRACE(f'argument: {first}, {rest}')
+        pass
+
+    def function_call(self, name, args):
+        LOG_TRACE(f'function_call: {name}({args})')
+        if name == "DTIG_TO_PROTO_MESSAGE":
+            return self.to_proto_message(args)
+        elif name == "DTIG_TYPE_TO_FUNCTION":
+            return self.type_to_function(args)
+
     def var(self, name):
         LOG_TRACE(f'var: {name}')
         return self.get_variable(name)
@@ -155,6 +171,7 @@ class Parser:
         self.cfg = config
         self.item = None
         self.item_index = 0
+        self.is_copy = False
 
         self.index = 0
         self.if_level = 0
@@ -162,18 +179,34 @@ class Parser:
         self.contents = None
         self.else_flag = False
 
+        self.to_string = None
         self.to_proto_message = None
         self.type_to_function = None
-        self.to_string = None
 
-        self.vars = dict()
+        self.functions = dict()
 
-        self.lark = Lark(lark_grammar, parser='lalr', transformer=CalculateCondition(self.cfg, self.variable))
+        self.lark = Lark(lark_grammar, parser='lalr',
+            transformer=CalculateCondition(self.cfg, self.variable, lambda x : self.to_proto_message(x), lambda x: self.type_to_function(x)))
+
+    def _copy(self):
+        parser = Parser(self.cfg)
+        parser.is_copy = True
+        parser.item = self.item
+        parser.item_index = self.item_index
+
+        parser.functions = self.functions
+
+        parser.to_string = self.to_string
+        parser.to_proto_message = self.to_proto_message
+        parser.type_to_function = self.type_to_function
+
+        return parser
 
     def parse(self, text):
         # Reset all values before parsing
-        self.item = None
-        self.item_index = 0
+        if not self.is_copy:
+            self.item = None
+            self.item_index = 0
 
         self.index = 0
         self.if_level = 0
@@ -182,14 +215,14 @@ class Parser:
         self.else_flag = False
         self.else_if_flag = False
 
-        # Start from index 0 with no brackets
+        # Start from self.index 0 with no brackets
         return self.parse_ast(text, 0, 0)
 
     def parse_ast(self, contents, c_if_level, c_for_level):
         body = ""
         iter_body = contents
         while True:
-            call_match = re.search(fr'(DTIG_[\w\d_]+)', iter_body)
+            call_match = re.search(fr'DTIG_[A-Z_]+', iter_body)
             if not call_match:
                 body += iter_body.rstrip()
                 break
@@ -212,64 +245,57 @@ class Parser:
                 iter_body = iter_body[cond_match.end():]
                 self.index += cond_match.end()
 
-
                 # Here, we have the entire if body, from start to end
-                if_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                try:
+                    end, if_body, end_mode = self.get_end(iter_body, fr'\bDTIG_IF\b', fr'\b(DTIG_ELSE|DTIG_ELSE_IF|DTIG_END_IF)\b', "DTIG_END_IF")
+                except Exception as e:
+                    raise Exception(f"End of DTIG_IF not found: DTIG_IF({condition})")
+
+                self.index += end
                 iter_body = self.contents[self.index:]
+
                 c_and_b.append((condition, if_body))
 
-                while self.else_if_flag:
+                while end_mode == "DTIG_ELSE_IF":
                     cond_match = re.search(fr'\(.*\)', iter_body)
-                    condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
+                    else_condition = iter_body[cond_match.start() + 1:cond_match.end() - 1]
 
                     iter_body = iter_body[cond_match.end():]
                     self.index += cond_match.end()
+                    try:
+                        end, else_if_body, end_mode = self.get_end(iter_body, fr'\bDTIG_IF\b', fr'\b(DTIG_ELSE|DTIG_ELSE_IF|DTIG_END_IF)\b', "DTIG_END_IF")
+                    except Exception as e:
+                        raise Exception(f"End of DTIG_ELSE_IF not found: DTIG_IF({condition}) ... DTIG_ELSE_IF({else_condition})")
 
-                    self.else_if_flag = False
-                    else_if_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                    self.index += end
                     iter_body = self.contents[self.index:]
 
-                    c_and_b.append((condition, else_if_body))
+                    c_and_b.append((else_condition, else_if_body))
 
-                else_body = ""
-                if self.else_flag:
-                    self.else_flag = False
-                    else_body = self.parse_ast(iter_body, self.if_level, self.for_level)
+                if end_mode == "DTIG_ELSE":
+                    try:
+                        end, else_body, end_mode = self.get_end(iter_body, fr'\bDTIG_IF\b', fr'\bDTIG_END_IF\b', "DTIG_END_IF")
+                    except Exception as e:
+                        raise Exception(f"End of DTIG_ELSE not found: DTIG_IF({condition})...DTIG_ELSE")
+
+                    self.index += end
                     iter_body = self.contents[self.index:]
-                    # Else is "always" true
+
                     c_and_b.append(("True", else_body))
 
                 for item in c_and_b:
                     if self.conditional(item[0]):
-                        body += item[1].rstrip()
+                        body += self._copy().parse(item[1])
                         break
 
             elif call == "DTIG_ELSE_IF":
-                body += iter_body[:call_match.start()].rstrip()
-                iter_body = iter_body[call_match.end():]
-                self.index += call_match.end()
-
-                self.else_if_flag = True
-                return body
+                raise Exception("DTIG_ELSE_IF should never be found, maybe a missing DTIG_ELSE_IF")
 
             elif call == "DTIG_ELSE":
-                body += iter_body[:call_match.start()].rstrip()
-                iter_body = iter_body[call_match.end():]
-                self.index += call_match.end()
-
-                self.else_flag = True
-                return body
+                raise Exception("DTIG_ELSE should never be found, maybe a missing DTIG_ELSE")
 
             elif call == "DTIG_END_IF":
-                self.if_level -= 1
-
-                body += iter_body[:call_match.start()].rstrip()
-                self.index += call_match.end()
-
-                if self.if_level == c_if_level - 1:
-                    break
-
-                iter_body = iter_body[call_match.end():]
+                raise Exception("DTIG_END_IF should never be found, maybe a missing DTIG_END_IF")
 
             elif call == "DTIG_FOR":
                 body += iter_body[:call_match.start()].rstrip()
@@ -345,7 +371,9 @@ class Parser:
                 iter_body = iter_body[cond_match.end():]
                 self.index += cond_match.end()
 
-                body += f'{to_replace}{self.type_to_function(self.variable(condition))}'
+                var = self.variable(condition)
+                func = self.type_to_function(var)
+                body += f'{to_replace}{func}'
 
             elif call == "DTIG_STR":
                 to_replace = iter_body[:call_match.start()]
@@ -360,7 +388,66 @@ class Parser:
                 iter_body = iter_body[cond_match.end():]
                 self.index += cond_match.end()
 
-                body += f'{to_replace}{self.to_string(self.conditional(condition))}'
+                if self.to_string:
+                    body += f'{to_replace}{self.to_string(self.conditional(condition))}'
+                else:
+                    body += f'{to_replace}{self.conditional(condition)}'
+
+            elif call == "DTIG_DEF":
+                body += iter_body[:call_match.start()].rstrip()
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                name_match = re.search(fr'(DTIG_[A-Z_]+)', iter_body)
+                function_name = iter_body[name_match.start():name_match.end()]
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                args_match = re.search(fr'\(.*\)', iter_body)
+                function_args = iter_body[args_match.start() + 1:args_match.end() - 1]
+                iter_body = iter_body[args_match.end():]
+                self.index += args_match.end()
+
+                function_end = re.search(fr'DTIG_END_DEF', iter_body)
+                function_body = iter_body[:function_end.start()].rstrip()
+
+                self.functions[function_name] = {
+                    "body": function_body,
+                    "args": function_args
+                }
+
+                iter_body = iter_body[function_end.end():]
+                self.index += function_end.end()
+
+            elif call == "DTIG_END_DEF":
+                raise Exception("DTIG_END_DEF should never be found, maybe a missing DTIG_END_DEF")
+
+            elif call in self.functions:
+                body += iter_body[:call_match.start()].rstrip()
+                iter_body = iter_body[call_match.end():]
+                self.index += call_match.end()
+
+                # Get the function call
+                function_call = self.functions[call]
+
+                # Replace all the arguments in the body by the found argument
+                args_match = re.search(fr'\(.*\)', iter_body)
+                args_body = iter_body[args_match.start() + 1:args_match.end() - 1]
+                args_values = [arg.strip() for arg in args_body.split(",")]
+                args_names = [arg.strip() for arg in function_call["args"].split(",")]
+
+                function_body = function_call["body"]
+                for arg_value, arg_name in zip(args_values, args_names):
+                    function_body = re.sub(fr'DTIG>{arg_name}', arg_value, function_body)
+
+                # Update iter body
+                iter_body = iter_body[args_match.end():]
+                self.index += args_match.end()
+
+                parser = self._copy()
+                ret_body = parser.parse(function_body)
+
+                body += ret_body
 
             else:
                 var = self.variable(call)
@@ -373,11 +460,38 @@ class Parser:
 
         return body
 
-    def conditional(self, contents):
-        result = True
+    def get_end(self, contents, start_regex, end_regex, end_marker):
+        index = 0
         iter_body = contents
-        ret = self.lark.parse(contents)
-        return ret
+        level = 0
+        while iter_body:
+            a = re.search(start_regex, iter_body)
+            b = re.search(end_regex, iter_body)
+
+            if not b:
+                break
+
+            # If nesting, continue
+            if a and a.start() < b.start():
+                level += 1
+                index += a.end()
+                iter_body = iter_body[a.end():]
+                continue
+
+            end_mode = iter_body[b.start():b.end()]
+            if level == 0:
+                return index + b.end(), contents[0:index + b.start()], end_mode
+
+            if end_mode == end_marker:
+                level -= 1
+
+            index += b.end()
+            iter_body = iter_body[b.end():]
+
+        raise Exception()
+
+    def conditional(self, contents):
+        return self.lark.parse(contents)
 
     def variable(self, var):
         if var == "DTIG_INDEX":
@@ -430,7 +544,22 @@ class Parser:
         # Parameters ======================
         elif "PARAMETERS" in var:
             return self.get_from_list(var, "PARAMETERS", KEY_PARAMETERS)
+        elif var == "DTIG_ALL":
+            all_values = []
+            if self.cfg.has(KEY_INPUTS):
+                all_values += self.cfg[KEY_INPUTS]
+            if self.cfg.has(KEY_OUTPUTS):
+                all_values += self.cfg[KEY_OUTPUTS]
+            if self.cfg.has(KEY_PARAMETERS):
+                all_values += self.cfg[KEY_PARAMETERS]
+
+            if not len(all_values):
+                return default_list()
+
+            return all_values
         # Variables =======================
+        elif "DTIG_TYPE_" in var:
+            return self.type_to_regex(var[5:])
         else:
             return self.type_to_regex(var)
 
@@ -464,41 +593,10 @@ class Parser:
             return names
 
     def type_to_regex(self, call):
-        if call == "TYPE_BOOL":
-            return TYPE_BOOL
-        elif call == "TYPE_BYTES":
-            return TYPE_BYTES
-        elif call == "TYPE_STRING":
-            return TYPE_STRING
-        elif call == "TYPE_INT_8":
-            return TYPE_INT_8
-        elif call == "TYPE_INT_16":
-            return TYPE_INT_16
-        elif call == "TYPE_INT_32":
-            return TYPE_INT_32
-        elif call == "TYPE_INT_64":
-            return TYPE_INT_64
-        elif call == "TYPE_UINT_8":
-            return TYPE_UINT_8
-        elif call == "TYPE_UINT_16":
-            return TYPE_UINT_16
-        elif call == "TYPE_UINT_32":
-            return TYPE_UINT_32
-        elif call == "TYPE_UINT_64":
-            return TYPE_UINT_64
-        elif call == "TYPE_FLOAT_32":
-            return TYPE_FLOAT_32
-        elif call == "TYPE_FLOAT_64":
-            return TYPE_FLOAT_64
-        elif call == "TYPE_FORCE":
-            return TYPE_FORCE
-        elif call == "TYPE_FIXTURE":
-            return TYPE_FIXTURE
-        elif call == "TYPE_MESH":
-            return TYPE_MESH
-        elif call == "TYPE_SOLID":
-            return TYPE_SOLID
-        else:
+        try:
+            # See if we are dealing with a KEY or TYPE
+            return globals()[call]
+        except:
             return self.key_to_regex(call)
 
     def key_to_regex(self, call):
@@ -524,36 +622,66 @@ class Parser:
 if __name__ == "__main__":
     start_logger(LogLevel.TRACE)
     config = JsonConfiguration()
-    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/freecad/config.json")
+    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/freecad_config.json")
 
     p = Parser(config)
 
+    from tools import cpp
+    p.type_to_function = lambda variable_type: cpp.to_type(variable_type)
+    p.to_proto_message = lambda variable_type: cpp.to_proto_message(variable_type)
+    p.to_string = lambda variable_type: f'\"{variable_type}\"'
+
     text = """
-def get_model_info(references):
-    if not self.model_name:
-        return self.return_code(dtig_code.FAILURE, f'Model is not yet known')
+DTIG_DEF DTIG_WRITE_STRING (TYPE, NAME)
+DTIG_IF(DTIG_TYPE_TO_FUNCTION(NAME) == DTIG_TYPE_TO_FUNCTION(TYPE_STRING))
+parameters[mOsDTIG_ITEM_NAME.at(DTIG_STR(TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(NAME)>(message.TYPE().c_str());
+DTIG_ELSE
+parameters[mOsDTIG_ITEM_NAME.at(DTIG_STR(TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(NAME)>(&message.TYPE());
+DTIG_END_IF
+DTIG_END_DEF
 
-    return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
-    DTIG_FOR(DTIG_INPUTS)
-    info_DTIG_ITEM_NAME = dtig_info.MInfo()
+DTIG_DEF DTIG_WRITE_PARAMETER (TYPE)
+DTIG_IF(TYPE == DTIG_TYPE_PROP_VALUE)
+DTIG_WRITE_STRING(TYPE, DTIG_ITEM_TYPE)
+DTIG_ELSE_IF(TYPE)
+DTIG_WRITE_STRING(TYPE, TYPE)
+DTIG_END_IF
+DTIG_END_DEF
 
-    DTIG_IF(4 < 1)
-    info_DTIG_ITEM_NAME.id.value = 1
-    DTIG_ELSE_IF(4 < 2)
-    info_DTIG_ITEM_NAME.id.value = 2
-    DTIG_ELSE_IF(4 < 3)
-    info_DTIG_ITEM_NAME.id.value = 3
-    DTIG_ELSE_IF(4 < 4)
-    info_DTIG_ITEM_NAME.id.value = 4
-    DTIG_ELSE_IF(6 < 5)
-    info_DTIG_ITEM_NAME.id.value = 5
-    DTIG_ELSE
-    info_DTIG_ITEM_NAME.id.value = 6
-    DTIG_END_IF
+DTIG_FOR(DTIG_OUTPUTS)
 
-    return_value.model_info.inputs.append(info_DTIG_ITEM_NAME)
-    DTIG_END_FOR
+// Update the output DTIG_ITEM_NAME:
+rti1516::ParameterHandleValueMap DTIG>CLASSNAME::ParameterMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage)
+{
+  ParameterHandleValueMap parameters;
 
-    return return_value
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) message;
+  if (!anyMessage.UnpackTo(&message))
+  {
+    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
+    return parameters;
+  }
+
+  DTIG_IF(DTIG_ITEM_TYPE == TYPE_FORCE OR DTIG_ITEM_TYPE == TYPE_FIXTURE)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_VALUE)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_DIRECTION)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_OBJECT)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_REFERENCE)
+
+  DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_MATERIAL)
+
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_NAME)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_STATE)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_DENSITY)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_YOUNGS_MODULUS)
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_POISSON_RATIO)
+  DTIG_ELSE
+
+  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_VALUE)
+  DTIG_END_IF
+
+  return parameters;
+}
+DTIG_END_FOR
     """
     LOG_INFO(p.parse(text))

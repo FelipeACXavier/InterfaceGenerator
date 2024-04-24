@@ -47,7 +47,7 @@ class ServerGeneratorFreeCAD(ServerGenerator):
             return "ObjectsFem.makeConstraintFixed"
         elif variable_type == TYPE_FORCE:
             return "ObjectsFem.makeConstraintForce"
-        elif variable_type == TYPE_SOLID:
+        elif variable_type == f'TYPE_MATERIAL':
             return "ObjectsFem.makeMaterialSolid"
 
     def parse_dtig_language(self, parser=None):

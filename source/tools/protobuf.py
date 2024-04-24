@@ -34,11 +34,13 @@ def protobuf_generator(func):
 @protobuf_generator
 def generate_python(out_dir : str):
     command = f'{PROTOC} -I={PROTOBUF_DIR} --python_out={out_dir} {PROTOBUF_DTIG_DIR}/*.proto'
+    LOG_DEBUG(f'Generating protos: {command}')
     return run_command(command)
 
 @protobuf_generator
 def generate_cpp(out_dir : str):
     command = f'{PROTOC} -I={PROTOBUF_DIR} --cpp_out={out_dir} {PROTOBUF_DTIG_DIR}/*.proto'
+    LOG_DEBUG(f'Generating protos: {command}')
     return run_command(command)
 
 @protobuf_generator
@@ -54,6 +56,7 @@ def generate_java(out_dir : str):
             return downloaded
 
     command = f'{PROTOC} -I={PROTOBUF_DIR} --java_out={out_dir} {PROTOBUF_DTIG_DIR}/*.proto'
+    LOG_DEBUG(f'Generating protos: {command}')
     return run_command(command)
 
 def generate_matlab(out_dir : str):

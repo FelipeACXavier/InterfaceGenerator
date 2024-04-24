@@ -75,10 +75,29 @@ TYPE_UINT_64    = "uint64"
 TYPE_FLOAT_32   = "float32"
 TYPE_FLOAT_64   = "float64"
 
+# Generic property
+TYPE_PROP_VALUE = "value"
+
 # FEM types
+TYPE_MESH = "mesh"
 TYPE_FORCE = "force"
 TYPE_FIXTURE = "fixture"
-TYPE_MESH = "mesh"
-TYPE_SOLID = "solid"
+TYPE_PROP_MAGNITUDE = "magnitude"
+TYPE_PROP_OBJECT = "object"
+TYPE_PROP_REFERENCE = "reference"
+TYPE_PROP_DIRECTION = "direction"
+
+# Material properties
+TYPE_MATERIAL = "material"
+TYPE_PROP_STATE = "state"
+TYPE_PROP_NAME = "name"
+TYPE_PROP_YOUNGS_MODULUS = "youngs_modulus"
+TYPE_PROP_POISSON_RATIO = "poisson_ratio"
+TYPE_PROP_DENSITY = "density"
+
+# States of matter supported by material
+TYPE_MATERIAL_SOLID = "solid"
+TYPE_MATERIAL_LIQUID = "liquid"
+TYPE_MATERIAL_GAS = "gas"
 
 NUMBER_OF_MESSAGES = 11
