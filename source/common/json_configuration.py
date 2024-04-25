@@ -19,7 +19,10 @@ class JsonConfiguration(ModelConfigurationBase):
         self.data[key] = value
 
     def __getitem__(self, key):
-        return self.data[key]
+        if key in self.data:
+            return self.data[key]
+
+        return None
 
     def has(self, key):
         return key in self.data
