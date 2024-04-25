@@ -2,6 +2,7 @@
 # Basic imports
 import sys
 import socket
+import argparse
 import threading
 
 from enum import Enum
@@ -62,12 +63,12 @@ def parse_initialize(message) -> Message:
     if self.state != dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
 
-    ret = DTIG>CALLBACK(INITIALIZE)
+    ret = DTIG>CALLBACK(INITIALIZE)(message)
     if ret.code != dtig_code.SUCCESS:
         return ret
 
     self.state = dtig_state.INITIALIZED
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    return self.return_code(dtig_code.SUCCESS)
 
 <DTIG_PARSE(START)>
 def parse_start(message) -> Message:
@@ -85,7 +86,7 @@ def parse_stop(message) -> Message:
 
     self.step = True
     self.state = dtig_state.STOPPED
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    return self.return_code(dtig_code.SUCCESS)
 
 <DTIG_PARSE(SET_INPUT)>
 def parse_set_input(message) -> Message:
@@ -106,7 +107,7 @@ def parse_set_input(message) -> Message:
     return self.return_code(dtig_code.SUCCESS)
 
 <DTIG_PARSE(GET_OUTPUT)>
-def parse_get_output(message) -> dtig_return.MReturnValue:
+def parse_get_output(message):
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot get output in state {dtig_state.EState.Name(self.state)}')
 
@@ -119,7 +120,7 @@ def parse_get_output(message) -> dtig_return.MReturnValue:
     return return_message
 
 <DTIG_PARSE(SET_PARAMETER)>
-def parse_set_parameter(message) -> dtig_return.MReturnValue:
+def parse_set_parameter(message):
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot set parameter in state {dtig_state.EState.Name(self.state)}')
 
@@ -136,7 +137,7 @@ def parse_set_parameter(message) -> dtig_return.MReturnValue:
     return self.return_code(dtig_code.SUCCESS)
 
 <DTIG_PARSE(GET_PARAMETER)>
-def parse_get_parameter(message) -> dtig_return.MReturnValue:
+def parse_get_parameter(message):
     if self.state == dtig_state.UNINITIALIZED:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot get parameter in state {dtig_state.EState.Name(self.state)}')
 
@@ -154,18 +155,6 @@ def parse_advance(message) -> Message:
         return self.return_code(dtig_code.INVALID_STATE, f'Cannot advance in state {dtig_state.EState.Name(self.state)}')
 
     return DTIG>CALLBACK(ADVANCE)(message)
-
-<DTIG_PARSE(INITIALIZE)>
-def parse_initialize(message) -> Message:
-    if self.state != dtig_state.UNINITIALIZED:
-        return self.return_code(dtig_code.INVALID_STATE, f'Cannot initialize in state {dtig_state.EState.Name(self.state)}')
-
-    ret = DTIG>CALLBACK(INITIALIZE)(message)
-    if ret.code != dtig_code.SUCCESS:
-        return ret
-
-    self.state = dtig_state.INITIALIZED
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
 <DTIG_PARSE(MODEL_INFO)>
 def parse_model_info() -> Message:
@@ -208,7 +197,7 @@ def parse_message(self, data : str) -> Message:
     else:
         return DTIG>PARSE(MODEL_INFO)()
 
-    return dtig_return.MReturnValue(code=dtig_code.UNKNOWN_COMMAND)
+    return self.return_code(dtig_code.UNKNOWN_COMMAND)
 
 <DTIG_METHOD(PUBLIC)>
 def return_code(self, code: dtig_code, message: str = None) -> dtig_return:
@@ -265,13 +254,16 @@ def run_server(self) -> None:
             self.condition.notify_all()
 
 <DTIG_MAIN>
+argument_parser = argparse.ArgumentParser(description='DTIG>CLASSNAME sever')
+argument_parser.add_argument('--host', action="store", dest="host", help='Server hostname/ip', type=str, default="127.0.0.1")
+argument_parser.add_argument('--port', action="store", dest="port", help='Server port', type=int, default=8080)
+args = argument_parser.parse_args()
+
 if __name__ == "__main__":
-    print(sys.argv)
-    for i, arg in enumerate(sys.argv):
-        if arg == "--host":
-            HOST = sys.argv[i + 1]
-        elif arg == "--port":
-            PORT = int(sys.argv[i + 1])
+    if args.host:
+        HOST = args.host
+    if args.port:
+        PORT = args.port
 
     wrapper = DTIG>CLASSNAME()
     wrapper.DTIG>RUN()
@@ -298,7 +290,7 @@ def start_callback(message) -> Message:
 
 <DTIG_CALLBACK(MODEL_INFO)>
 def get_model_info():
-    return_value = dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    return_value = self.return_code(dtig_code.SUCCESS)
 
     # Inputs
     DTIG_FOR(DTIG_INPUTS)

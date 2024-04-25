@@ -85,6 +85,12 @@ def exists(file_name):
 def is_directory_empty(dir_name):
     return not os.path.isdir(dir_name) or not os.listdir(dir_name)
 
+def to_absolute_path(path):
+    if os.path.isabs(path):
+        return path
+
+    return os.path.abspath(path)
+
 def current_dir():
     return os.getcwd()
 

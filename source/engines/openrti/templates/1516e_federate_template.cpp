@@ -364,12 +364,12 @@ void enableTimePolicy()
 void publishAndSubscribe()
 {
   fedamb->attributeReceived = [this](rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues) {
-    std::wcout << "Setting parameters for interaction: " << theObject.toString() << std::endl;
+    // std::wcout << "Setting parameters for interaction: " << theObject.toString() << std::endl;
     DTIG>CALLBACK(SET_PARAMETER)(theObject, theAttributeValues);
   };
 
   fedamb->interactionReceived = [this](rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues) {
-    // std::wcout << "Setting inputs for interaction: " << theInteraction.toString() << std::endl;
+    std::wcout << "Setting inputs for interaction: " << theInteraction.toString() << std::endl;
     DTIG>CALLBACK(SET_INPUT)(theInteraction, theParameterValues);
   };
 

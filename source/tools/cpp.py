@@ -151,6 +151,8 @@ def create_structure():
 
     structure[KEY_CALLBACK][KEY_RUN][KEY_NAME]              = structure[KEY_RUN][KEY_NAME]
     structure[KEY_CALLBACK][KEY_RUN_MODEL][KEY_NAME]        = structure[KEY_RUN_MODEL][KEY_NAME]
+    structure[KEY_CALLBACK][KEY_RUN_SERVER][KEY_NAME]       = structure[KEY_RUN_SERVER][KEY_NAME]
+    structure[KEY_CALLBACK][KEY_RUN_CLIENT][KEY_NAME]       = structure[KEY_RUN_CLIENT][KEY_NAME]
 
     structure[KEY_CALLBACK][KEY_STOP][KEY_NAME]             = "dtigEngineStop"
     structure[KEY_CALLBACK][KEY_START][KEY_NAME]            = "dtigEngineStart"

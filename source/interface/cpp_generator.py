@@ -112,10 +112,9 @@ class HppGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read callbacks: {result}')
 
-        LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
-
         # Then parse the engine template
         if self.engine_template_file:
+            LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
             data = cpp.read_file(self.engine_template_file)
 
             result = self.parse_template(
@@ -391,10 +390,9 @@ class CppGenerator(GeneratorBase):
         if not result.is_success():
             return VoidResult.failed(f'Failed to read callbacks: {result}')
 
-        LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
-
         # Then parse the engine template
         if self.engine_template_file:
+            LOG_DEBUG(f'Parsing engine template: {self.engine_template_file}')
             data = cpp.read_file(self.engine_template_file)
 
             result = self.parse_template(

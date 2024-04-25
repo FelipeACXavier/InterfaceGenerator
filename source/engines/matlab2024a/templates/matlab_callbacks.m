@@ -94,6 +94,7 @@ function run_model()
   fprintf("Starting with: %s\n", string(status.state));
   fprintf("Running from %.4f to %.4f with step size %.4f\n", startTime, stopTime, stepSize);
 
+  DTIG_IF(DTIG_FORMALISM == DTIG_FORMALISM_CONTINUOUS)
   t = startTime:stepSize:stopTime;
   y = zeros(size(t));
   x = zeros(size(t));
@@ -129,16 +130,13 @@ function run_model()
       status.state = dtig.EState.WAITING;
     end
   end
-
+  DTIG_ELSE
+  force = DTIG_MODEL_PATH(v, v0, mass, stepSize);
+  v0 = v;
+  DTIG_END_IF
   if status.state ~= dtig.EState.STOPPED
     status.state = dtig.EState.IDLE;
   end
-
-  plot (t, y, "LineWidth", 1);
-  xlabel("Time (s)");
-  ylabel("Height (m)");
-  title("Bouncing ball simulation");
-  grid on
 end
 
 <DTIG_CALLBACK(SET_INPUT)>

@@ -1,6 +1,7 @@
 <DTIG_IMPORTS>
 % Clear the prompt
 clc;
+clear server;
 
 % Include jar paths
 javaaddpath('./');
@@ -55,7 +56,7 @@ end
 % ======================================================================
 % Main
 % ======================================================================
-server = tcpserver("127.0.0.1", 8080, "ConnectionChangedFcn", @connectionFcn);
+server = tcpserver("127.0.0.1", 8083, "ConnectionChangedFcn", @connectionFcn);
 
 configureCallback(server, "byte", 4, @readByteFcn);
 
@@ -66,6 +67,7 @@ try
   if waitForState([dtig.EState.INITIALIZED])
     while status.state ~= dtig.EState.STOPPED
       DTIG>RUNMODEL();
+      waitForState([dtig.EState.IDLE]);
       disp("Model done");
     end
   end
@@ -122,16 +124,12 @@ end
 function returnValue = waitForState(expectedStates)
   global status;
 
-  while ~ismember(string(status.state), string(expectedStates))
+  while ~ismember(string(status.state), string([expectedStates, dtig.EState.STOPPED]))
     waitfor(status, "wait", false);
     status.wait = true;
-    if status.state == dtig.EState.STOPPED
-      returnValue = false;
-      return
-    end
   end
 
-  returnValue = true;
+   returnValue = status.state ~= dtig.EState.STOPPED;
 end
 
 <DTIG_MESSAGEHANDLER>
@@ -187,9 +185,13 @@ end
 function returnValue = parse_stop(message)
   global status;
 
-  returnValue = DTIG>CALLBACK(STOP)(message);
-  if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
-    return
+  try
+    returnValue = DTIG>CALLBACK(STOP)(message);
+    if returnValue.getCode() ~= dtig.EReturnCode.SUCCESS
+      return
+    end
+  catch exception
+    returnValue = createReturn(dtig.EReturnCode.FAILURE, "Exception when trying to stop, stopping anyway");
   end
 
   status.state = dtig.EState.STOPPED;
@@ -316,7 +318,7 @@ end
 
 <DTIG_CALLBACK(MODEL_INFO)>
 function returnValue = model_info_callback()
-    returnValue = createReturn(dtig.EReturnCode.SUCCESS)
+    returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 
     dtigModelInfo = dtig.MModelInfo.newBuilder();
 

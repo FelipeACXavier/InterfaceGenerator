@@ -1,7 +1,8 @@
 # Configuration keys
 KEY_MODE = "mode"
-KEY_STEP = "step"
-KEY_ENGINE = "engine"
+KEY_STEP_SIZE = "step_size"
+KEY_START_TIME = "start_time"
+KEY_STOP_TIME = "stop_time"
 KEY_CLIENT = "client"
 KEY_SERVER = "server"
 KEY_INPUTS = "inputs"
@@ -11,6 +12,7 @@ KEY_VERSION = "version"
 KEY_FORMALISM = "formalism"
 KEY_LOOKAHEAD = "lookahead"
 KEY_PARAMETERS = "parameters"
+KEY_MODEL_PATH = "model_path"
 KEY_MINIMUM_STEP = "minimumstep"
 KEY_SUPER_DENSE_TIME = "superdensetime"
 
@@ -99,5 +101,10 @@ TYPE_PROP_DENSITY = "density"
 TYPE_MATERIAL_SOLID = "solid"
 TYPE_MATERIAL_LIQUID = "liquid"
 TYPE_MATERIAL_GAS = "gas"
+
+# Formalisms
+FORMALISM_CONTINUOUS = "continuous"
+FORMALISM_DISCRETE = "discrete"
+FORMALISM_FEM = "fem"
 
 NUMBER_OF_MESSAGES = 11

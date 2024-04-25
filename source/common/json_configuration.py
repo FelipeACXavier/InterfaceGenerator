@@ -10,8 +10,13 @@ class JsonConfiguration(ModelConfigurationBase):
         with open(filename, "r") as file:
             self.data = json.load(file)
 
+        super().parse(filename)
+
     def __str__(self):
         return json.dumps(self.data, indent=2)
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
 
     def __getitem__(self, key):
         return self.data[key]

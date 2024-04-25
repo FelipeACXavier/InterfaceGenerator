@@ -270,22 +270,29 @@ class GeneratorBase():
                     for i in range(len(self.callbacks[outer_key][key][KEY_BODY])):
                         self.callbacks[outer_key][key][KEY_BODY][i] = parser.parse(self.callbacks[outer_key][key][KEY_BODY][i]) + "\n"
 
+    # This function should be called once the file structure is done
     def parse_dtig_language(self, parser=None):
         if not parser:
             LOG_WARNING(f'No parser provided')
             return
 
-        # This function should be called once the file structure is done
-        self.parse_language(parser, KEY_CALLBACK)
-        self.parse_language(parser, KEY_INHERIT)
-
-        self.parse_language(parser, KEY_CONSTRUCTOR)
-        self.parse_language(parser, KEY_DESTRUCTOR)
-        self.parse_language(parser, KEY_MEMBER)
-        self.parse_language(parser, KEY_METHOD)
+        for key in self.callbacks:
+            if KEY_NAME in self.callbacks[key]:
+                if self.callbacks[key][KEY_BODY]:
+                    self.callbacks[key][KEY_BODY] = parser.parse(self.callbacks[key][KEY_BODY])
+            else:
+                self.parse_language(parser, key)
 
     @abstractmethod
     def function_from_key(self, groups, default_name):
+        raise Exception("arguments_from_key must be implemented")
+
+    @abstractmethod
+    def to_type(self, groups, default_name):
+        raise Exception("arguments_from_key must be implemented")
+
+    @abstractmethod
+    def to_proto_message(self, groups, default_name):
         raise Exception("arguments_from_key must be implemented")
 
 

@@ -68,6 +68,33 @@ def to_type(variable_type):
         return f'bool'
     elif variable_type == TYPE_BYTES:
         return f'bytes'
+    # More complex types
+    elif variable_type == TYPE_FORCE:
+        return f'float'
+    elif variable_type == TYPE_FIXTURE:
+        return f'float'
+    elif variable_type == TYPE_MATERIAL:
+        return f'str'
+    elif variable_type == TYPE_MESH:
+        return f'str'
+    elif variable_type == TYPE_PROP_MAGNITUDE:
+        return f'float'
+    elif variable_type == TYPE_PROP_OBJECT:
+        return f'str'
+    elif variable_type == TYPE_PROP_REFERENCE:
+        return f'str'
+    elif variable_type == TYPE_PROP_DIRECTION:
+        return f'str'
+    elif variable_type == TYPE_PROP_STATE:
+        return f'str'
+    elif variable_type == TYPE_PROP_NAME:
+        return f'str'
+    elif variable_type == TYPE_PROP_YOUNGS_MODULUS:
+        return f'str'
+    elif variable_type == TYPE_PROP_POISSON_RATIO:
+        return f'str'
+    elif variable_type == TYPE_PROP_DENSITY:
+        return f'str'
 
 def to_proto_message(variable_type):
     if variable_type == TYPE_FLOAT_32:

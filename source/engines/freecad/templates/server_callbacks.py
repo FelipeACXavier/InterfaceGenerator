@@ -22,9 +22,13 @@ FreeCADWrapper
 self.stop_time  : float  = 10.0
 self.step_size  : float  = 1e-3
 self.model_name : str = None
+self.mesh_index = 0
 
 self.app = None
 
+self.results_mutex = threading.Lock()
+
+self.force_update = False
 self.solver = None
 self.results = None
 self.box_object = None
@@ -43,23 +47,63 @@ def parse_initialize(message) -> Message:
         print(f'Running with file: {self.model_name}')
 
         # Check if an analysis object already exists
+        create_solver = True
         create_analysis = True
         for obj in self.app.Objects:
             if obj.isDerivedFrom('Fem::FemAnalysis'):
                 print("Using existing analysis")
                 self.analysis_object = obj
                 create_analysis = False
-                break
+            elif obj.isDerivedFrom('Fem::FemSolverObjectPython'):
+                self.solver = obj
+                create_solver = False
 
         # Otherwise, create a new one
         if create_analysis:
             print("Adding new analysis")
             self.analysis_object = ObjectsFem.makeAnalysis(self.app)
 
+        if create_solver:
+            print("Adding new solver")
+            self.solver = ObjectsFem.makeSolverCalculixCcxTools(self.app)
+
+        self.solver.GeometricalNonlinearity = 'linear'
+        self.solver.ThermoMechSteadyState = True
+        self.solver.MatrixSolverType = 'default'
+        self.solver.IterationsControlParameterTimeUse = False
+        self.solver.TimeInitialStep = 0.01
+        self.solver.TimeEnd = 1
+
+        if create_solver:
+            self.analysis_object.addObject(self.solver)
+
+        self.mesh_object = self.get_object("MainMesh")
+        if not self.mesh_object:
+            print("No MainMesh found, adding a new one")
+            self.mesh_object = ObjectsFem.makeMeshGmsh(self.app, "MainMesh")
+
+            mesh_part = self.get_object("MainBody")
+            if not mesh_part:
+                return self.return_code(dtig_code.INVALID_OPTION, f'Could not find part: {"MainBody"}')
+
+            self.mesh_object.Part = mesh_part
+
+        # Here we just compute the mesh using the desired algorithm
+        from femmesh.gmshtools import GmshTools
+
+        print("Computing mesh")
+        gmsh_mesh = GmshTools(self.mesh_object)
+        error = gmsh_mesh.create_mesh()
+        if error:
+            return dtig_return.MReturnValue(code=dtig_code.FAILURE, message=f'GMESH error: {error}')
+
+        self.analysis_object.addObject(self.mesh_object)
+        self.app.save()
+
     except Exception as e:
         return self.return_code(dtig_code.FAILURE, f'{e}')
 
-    return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
+    return self.return_code(dtig_code.SUCCESS)
 
 <DTIG_CALLBACK(START)>
 def parse_start(message) -> Message:
@@ -80,54 +124,8 @@ def parse_start(message) -> Message:
     if not self.analysis_object:
         return self.return_code(dtig_code.INVALID_OPTION, f'Model not yet initialized')
 
-    create_solver = True
-    for obj in self.app.Objects:
-        if obj.isDerivedFrom('Fem::FemSolverObjectPython'):
-            print("Using existing solver")
-            self.solver = obj
-            create_solver = False
-            break
-
-    # Otherwise, create a new one
-    if create_solver:
-        print("Adding new solver")
-        self.solver = ObjectsFem.makeSolverCalculixCcxTools(self.app)
-
-    self.solver.GeometricalNonlinearity = 'linear'
-    self.solver.ThermoMechSteadyState = True
-    self.solver.MatrixSolverType = 'default'
-    self.solver.IterationsControlParameterTimeUse = False
-    self.solver.TimeInitialStep = self.step_size
-    self.solver.TimeEnd = self.stop_time
-
-    if create_solver:
-        self.analysis_object.addObject(self.solver)
-
-    self.mesh_object = self.get_object("MainMesh")
-    if not self.mesh_object:
-        print("No MainMesh found, adding a new one")
-        self.mesh_object = ObjectsFem.makeMeshGmsh(self.app, "MainMesh")
-
-        mesh_part = self.get_object("MainBody")
-        if not mesh_part:
-            return self.return_code(dtig_code.INVALID_OPTION, f'Could not find part: {"MainBody"}')
-
-        self.mesh_object.Part = mesh_part
-
-    # Here we just compute the mesh using the desired algorithm
-    from femmesh.gmshtools import GmshTools
-
-    print("Computing mesh")
-    gmsh_mesh = GmshTools(self.mesh_object)
-    error = gmsh_mesh.create_mesh()
-    if error:
-        return dtig_return.MReturnValue(code=dtig_code.FAILURE, message=f'GMESH error: {error}')
-
-    self.analysis_object.addObject(self.mesh_object)
-    self.app.save()
-
     print(f'Starting with: {dtig_run_mode.ERunMode.Name(self.mode)}.')
-    print(f'Running {self.stop_time:0.4f} with {self.step_size:0.4f}')
+    print(f'Running until {self.stop_time:0.4f} with {self.step_size:0.4f}')
 
     return dtig_return.MReturnValue(code=dtig_code.SUCCESS)
 
@@ -193,9 +191,7 @@ def run_model() -> None:
     print(f'Initializing FreeCAD FEM model')
 
     # Simulation loop
-    import Mesh
     from femtools import ccxtools
-    from femmesh.femmesh2mesh import femmesh_2_mesh
 
     print("Waiting for start")
     while self.state != dtig_state.STOPPED:
@@ -204,28 +200,32 @@ def run_model() -> None:
             if self.state == dtig_state.STOPPED:
                 break
 
-        print(f'Running with state: {self.state}')
+        if self.force_update:
+            print(f'Running with state: {dtig_state.EState.Name(self.state)}')
 
-        fea = ccxtools.FemToolsCcx(analysis=self.analysis_object, solver=self.solver)
-        fea.purge_results()
-        if not fea.run():
-            print("Simulation failed")
-        else:
-            for obj in self.analysis_object.Group:
-                if obj.isDerivedFrom('Fem::FemResultObject'):
-                    out_mesh = femmesh_2_mesh(self.mesh_object.FemMesh, obj)
-                    Mesh.Mesh(out_mesh).write('Results.obj')
-                    self.results = obj
-                    break
+            self.force_update = False
 
-        # Save document with results
-        self.app.save()
+            fea = ccxtools.FemToolsCcx(analysis=self.analysis_object, solver=self.solver)
+            fea.purge_results()
+            if not fea.run():
+                print("Simulation failed")
+                with self.condition:
+                    self.state == dtig_state.STOPPED
+            else:
+                with self.results_mutex:
+                    for obj in self.analysis_object.Group:
+                        if obj.isDerivedFrom('Fem::FemResultObject'):
+                            self.results = obj
+                            self.mesh_index += 1
+                            break
+
+            # Save document with results
+            self.app.save()
+            print(f'FreeCAD FEM simulation done')
 
         with self.condition:
             if self.state != dtig_state.STOPPED:
                 self.state = dtig_state.IDLE
-
-        print(f'FreeCAD FEM simulation done')
 
 <DTIG_CALLBACK(SET_INPUT)>
 def set_inputs(reference, any_value):
@@ -265,15 +265,42 @@ def set_inputs(reference, any_value):
             reverse, direction = self.direction_to_freecad(value.direction.value)
             constraint.Direction = (direction, [""])
             constraint.Reversed = reverse
-        if value.value:
-            constraint.Force = value.value.value
+        if value.magnitude:
+            constraint.Force = value.magnitude.value
 
         self.analysis_object.addObject(constraint)
 
-        DTIG_END_IF
-
         self.app.recompute()
         self.app.save()
+
+        DTIG_ELSE
+
+        if value.value > 1000:
+            # If force already exists, use that
+            constraint = self.get_object(reference)
+            if not constraint:
+                # constraint = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(self.app, reference)
+                constraint = ObjectsFem.makeConstraintForce(self.app, reference)
+
+            # obj_ref = self.app.getObject("Box")
+            # if not obj_ref:
+            #     return self.return_code(dtig_code.UNKNOWN_OPTION, f"Unknown output: {reference}")
+
+            # constraint.References = [(obj_ref, "Face2")]
+            # reverse, direction = self.direction_to_freecad(value.direction.value)
+            print(f"Setting force magnitude to: {value.value}")
+            constraint.Direction = (self.app.getObject(f'Z_Axis'), [""])
+            constraint.Reversed = True
+            constraint.Force = value.value
+
+            self.analysis_object.addObject(constraint)
+
+            self.app.recompute()
+            self.app.save()
+
+            self.force_update = True
+
+        DTIG_END_IF
 
         return self.return_code(dtig_code.SUCCESS)
 
@@ -287,51 +314,58 @@ def get_output_callback(references):
     DTIG_ELSE
 
     # Check whether results are available, for FreeCAD, the outputs are only available once the model finished running
-    if not self.results:
-        return self.return_code(dtig_code.FAILURE, "No output available")
+    with self.results_mutex:
+        if not self.results:
+            return self.return_code(dtig_code.FAILURE, "No output available")
 
-    return_message = self.return_code(dtig_code.SUCCESS)
-    for reference in references:
-    DTIG_FOR(DTIG_OUTPUTS)
-
-        DTIG_IF(DTIG_INDEX == 0)
-        if reference == DTIG_STR(DTIG_ITEM_NAME):
-        DTIG_ELSE
-        elif reference == DTIG_STR(DTIG_ITEM_NAME):
-        DTIG_END_IF
-
-            any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-
-            DTIG_IF(DTIG_ITEM_TYPE == TYPE_MESH)
-            import Mesh
-            from femmesh.femmesh2mesh import femmesh_2_mesh
-
-            out_mesh = femmesh_2_mesh(self.mesh_object.FemMesh, self.results)
-            Mesh.Mesh(out_mesh).write(DTIG_STR(DTIG_ITEM_DEFAULT))
-            any_value.value = DTIG_STR(DTIG_ITEM_DEFAULT)
-
+        return_message = self.return_code(dtig_code.SUCCESS)
+        for reference in references:
+        DTIG_FOR(DTIG_OUTPUTS)
+            DTIG_IF(DTIG_INDEX == 0)
+            if reference == DTIG_STR(DTIG_ITEM_NAME):
             DTIG_ELSE
-
-            property_value = self.results.getPropertyByName(reference)
-            if not property_value:
-                return self.return_code(dtig_code.FAILURE, f'No property: {reference}')
-
-            DTIG_IF(KEY_MODIFIER == DTIG_ITEM)
-            any_value.value = DTIG_ITEM_MODIFIER(property_value)
-            DTIG_ELSE
-            any_value.value = property_value
+            elif reference == DTIG_STR(DTIG_ITEM_NAME):
             DTIG_END_IF
 
-            DTIG_END_IF
+                any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
+
+                DTIG_IF(DTIG_ITEM_TYPE == TYPE_MESH)
+                import Mesh
+                from femmesh.femmesh2mesh import femmesh_2_mesh
+
+                out_mesh = femmesh_2_mesh(self.mesh_object.FemMesh, self.results)
+                DTIG_IF(DTIG_ITEM_DEFAULT)
+                name_parts = DTIG_STR(DTIG_ITEM_DEFAULT).split(".")
+                DTIG_ELSE
+                name_parts = ["Results", "obj"]
+                DTIG_END_IF
+                filename = f'{name_parts[0]}.{self.mesh_index}.{name_parts[1]}'
+                Mesh.Mesh(out_mesh).write(filename)
+                any_value.value = filename
+
+                DTIG_ELSE
+
+                property_value = self.results.getPropertyByName(reference)
+                if not property_value:
+                    return self.return_code(dtig_code.FAILURE, f'No property: {reference}')
+
+                DTIG_IF(DTIG_ITEM_MODIFIER)
+                any_value.value = DTIG_ITEM_MODIFIER(property_value)
+                DTIG_ELSE
+                any_value.value = property_value
+                DTIG_END_IF
+
+                DTIG_END_IF
+
+        DTIG_END_FOR
 
             any_msg = any_pb2.Any()
             any_msg.Pack(any_value)
             return_message.values.identifiers.append(reference)
             return_message.values.values.append(any_msg)
 
-            return return_message
+        return return_message
     DTIG_END_IF
-    DTIG_END_FOR
 
 <DTIG_CALLBACK(SET_PARAMETER)>
 def set_parameters(reference, any_value):
@@ -413,13 +447,14 @@ def get_parameter(references):
     DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
     return self.return_code(dtig_code.FAILURE, "Model has no parameters")
     DTIG_ELSE
-
     return_message = self.return_code(dtig_code.SUCCESS)
+
     for reference in references:
     DTIG_FOR(DTIG_PARAMETERS)
         DTIG_IF(DTIG_INDEX == 0)
         if reference == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_ELSE
+
         elif reference == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
             any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
@@ -428,10 +463,10 @@ def get_parameter(references):
                 return self.return_code(dtig_code.FAILURE, f'No property: {reference}')
             DTIG_IF(DTIG_ITEM_TYPE == TYPE_MATERIAL)
 
-            any_value.name = property_value.Material['Name']
-            any_value.youngs_modulus = property_value.Material['YoungsModulus']
-            any_value.poisson_ratio = property_value.Material['PoissonRatio']
-            any_value.density = property_value.Material['Density']
+            any_value.name.value = property_value.Material['Name']
+            any_value.youngs_modulus.value = property_value.Material['YoungsModulus']
+            any_value.poisson_ratio.value = property_value.Material['PoissonRatio']
+            any_value.density.value = property_value.Material['Density']
 
             DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_FIXTURE)
 
@@ -449,6 +484,7 @@ def get_parameter(references):
             return_message.values.identifiers.append(reference)
             return_message.values.values.append(any_msg)
 
-            return return_message
-    DTIG_END_IF
     DTIG_END_FOR
+
+    return return_message
+    DTIG_END_IF

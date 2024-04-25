@@ -80,13 +80,12 @@ def advance(self, sock):
 
 <DTIG_CALLBACK(SET_INPUT)>
 def set_input(self, sock):
+    DTIG_IF(DTIG_INPUTS)
     message = dtig_message.MDTMessage()
-    DTIG_IF(DTIG_PARAMETERS_LENGTH)
     print("Available inputs:")
     DTIG_FOR(DTIG_INPUTS)
     print(f'  DTIG_ITEM_NAME - DTIG_ITEM_TYPE')
     DTIG_END_FOR
-    DTIG_END_IF
 
     input_name = "default"
     while input_name:
@@ -96,28 +95,43 @@ def set_input(self, sock):
 
         DTIG_FOR(DTIG_INPUTS)
         DTIG_IF(DTIG_INDEX == 0)
-
         if input_name == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_ELSE
         elif input_name == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
             typed_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-            DTIG_IF(DTIG_ITEM_TYPE == TYPE_FORCE)
-            input_value = float(input("Force value? ").strip())
-            typed_value.value.value = input_value
+            DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE)
+            param_value = float(input("Force magnitude? ").strip())
+            typed_value.magnitude.value = param_value
 
-            input_object = input("Force on which object? (e.g. Box)").strip()
-            typed_value.object.value = input_object
+            param_object = input("Force on which object? (e.g. Box)").strip()
+            typed_value.object.value = param_object
 
-            input_reference = input("Force on which reference? (e.g. Face2)").strip()
+            param_reference = input("Force on which reference? (e.g. Face2)").strip()
             typed_value.reference.value = i_reference
 
-            input_direction input("Force on which direction? (e.g. -Z)").strip()
+            param_direction input("Force on which direction? (e.g. -Z)").strip()
             typed_value.direction.value = i_direction
 
+            DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+            param_DTIG_TYPE_PROP_STATE = float(input("DTIG_TYPE_PROP_STATE? ").strip())
+            typed_value.DTIG_TYPE_PROP_STATE.value = param_DTIG_TYPE_PROP_STATE
+
+            param_DTIG_TYPE_PROP_NAME = input("DTIG_TYPE_PROP_NAME? (e.g. Box)").strip()
+            typed_value.DTIG_TYPE_PROP_NAME.value = param_DTIG_TYPE_PROP_NAME
+
+            param_DTIG_TYPE_PROP_YOUNGS_MODULUS = input("DTIG_TYPE_PROP_YOUNGS_MODULUS?").strip()
+            typed_value.DTIG_TYPE_PROP_YOUNGS_MODULUS.value = param_DTIG_TYPE_PROP_YOUNGS_MODULUS
+
+            param_DTIG_TYPE_PROP_POISSON_RATIO = input("DTIG_TYPE_PROP_POISSON_RATIO?").strip()
+            typed_value.DTIG_TYPE_PROP_POISSON_RATIO.value = param_DTIG_TYPE_PROP_POISSON_RATIO
+
+            param_DTIG_TYPE_PROP_DENSITY = input("DTIG_TYPE_PROP_DENSITY?").strip()
+            typed_value.DTIG_TYPE_PROP_DENSITY.value = param_DTIG_TYPE_PROP_DENSITY
+
             DTIG_ELSE
-            input_value = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(input("Input value? ").strip())
-            typed_value.value = input_value
+            param_value = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(input("Input value? ").strip())
+            typed_value.value = param_value
             DTIG_END_IF
 
 
@@ -131,30 +145,31 @@ def set_input(self, sock):
         message.set_input.inputs.identifiers.append(input_name)
         message.set_input.inputs.values.append(any_msg)
 
-    self.send_message(sock, message)
-
     def handler(response):
-        if response.HasField("values"):
-            for any_value in response.values.values:
-                DTIG_FOR(DTIG_PARAMETERS)
-                DTIG_IF(DTIG_INDEX == 0)
-                if param == DTIG_STR(DTIG_ITEM_NAME):
-                DTIG_ELSE
-                elif param == DTIG_STR(DTIG_ITEM_NAME):
-                DTIG_END_IF
-                    value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-                    if any_value.Unpack(value):
-                        LOG_INFO(f'DTIG_ITEM_NAME: {value.value}')
-                DTIG_END_FOR
+        pass
 
     self.send_message(sock, message, handler)
+    DTIG_ELSE
+    pass
+    DTIG_END_IF
 
 <DTIG_CALLBACK(GET_OUTPUT)>
 def get_output(self, sock):
     message = dtig_message.MDTMessage()
+    DTIG_IF(DTIG_OUTPUTS)
+    print("Available outputs:")
     DTIG_FOR(DTIG_OUTPUTS)
-        message.get_output.outputs.identifiers.append(DTIG_STR(DTIG_ITEM_NAME))
+    print(f'  DTIG_ITEM_NAME - DTIG_ITEM_TYPE')
     DTIG_END_FOR
+    DTIG_END_IF
+
+    output_name = "default"
+    while output_name:
+        output_name = input("Which output? ")
+        if not len(output_name):
+            break
+
+        message.get_output.outputs.identifiers.append(output_name)
 
     def handler(response):
         if response.HasField("values"):
@@ -198,9 +213,9 @@ def set_parameter(self, sock):
         elif param_name == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
             typed_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-            DTIG_IF(DTIG_ITEM_TYPE == TYPE_FORCE)
-            param_value = float(input("Force value? ").strip())
-            typed_value.value.value = param_value
+            DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE)
+            param_value = float(input("Force magnitude? ").strip())
+            typed_value.magnitude.value = param_value
 
             param_object = input("Force on which object? (e.g. Box)").strip()
             typed_value.object.value = param_object
@@ -227,21 +242,8 @@ def set_parameter(self, sock):
         message.set_parameter.parameters.identifiers.append(param_name)
         message.set_parameter.parameters.values.append(any_msg)
 
-    self.send_message(sock, message)
-
     def handler(response):
-        if response.HasField("values"):
-            for any_value in response.values.values:
-                DTIG_FOR(DTIG_PARAMETERS)
-                DTIG_IF(DTIG_INDEX == 0)
-                if param == DTIG_STR(DTIG_ITEM_NAME):
-                DTIG_ELSE
-                elif param == DTIG_STR(DTIG_ITEM_NAME):
-                DTIG_END_IF
-                    value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-                    if any_value.Unpack(value):
-                        LOG_INFO(f'DTIG_ITEM_NAME: {value.value}')
-                DTIG_END_FOR
+        pass
 
     self.send_message(sock, message, handler)
 
@@ -263,9 +265,13 @@ def get_parameter(self, sock):
                 DTIG_ELSE
                 elif param == DTIG_STR(DTIG_ITEM_NAME):
                 DTIG_END_IF
+                    DTIG_IF((DTIG_ITEM_TYPE != DTIG_TYPE_MATERIAL AND DTIG_ITEM_TYPE != DTIG_TYPE_FIXTURE) AND DTIG_ITEM_TYPE != DTIG_TYPE_FORCE)
                     value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
                     if any_value.Unpack(value):
                         LOG_INFO(f'DTIG_ITEM_NAME: {value.value}')
+                    DTIG_ELSE
+                    print("get_parameter for DTIG_ITEM_NAME is not implemented")
+                    DTIG_END_IF
                 DTIG_END_FOR
 
     self.send_message(sock, message, handler)

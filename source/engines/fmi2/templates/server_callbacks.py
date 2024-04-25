@@ -17,6 +17,7 @@ self.step_size  : float  = 1e-3
 
 self.fmu = None
 self.model_name = None
+self.parameters = {}
 self.value_references = {}
 
 <DTIG_CALLBACK(INITIALIZE)>
@@ -109,7 +110,6 @@ def run_model() -> None:
 
     # collect the value references
     for variable in model_description.modelVariables:
-        print(f'{variable.name} with type {variable.type}')
         self.value_references[variable.name] = variable.valueReference
 
     # extract the FMU
@@ -126,14 +126,25 @@ def run_model() -> None:
     self.fmu.enterInitializationMode()
     self.fmu.exitInitializationMode()
 
+    first_run = True
     while self.state != dtig_state.STOPPED:
         with self.condition:
             self.condition.wait_for(lambda: self.state == dtig_state.RUNNING or self.state == dtig_state.STOPPED)
 
+        if self.mode == dtig_run_mode.CONTINUOUS and not first_run:
+            # reset() erases our current parameters, so we must save and restore them manually
+            self.store_parameters()
+            self.fmu.reset()
+            self.fmu.setupExperiment(startTime=self.start_time)
+            self.fmu.enterInitializationMode()
+            self.load_parameters()
+            self.fmu.exitInitializationMode()
+
+        first_run = False
         rows : list = []  # list to record the results
         time : float = self.start_time
 
-        print(f'Running with state: {self.state} and {time} vs {self.start_time}')
+        print(f'Running with state: {dtig_state.EState.Name(self.state)} and {time} vs {self.start_time}')
         # simulation loop
         while time < self.stop_time and self.state != dtig_state.STOPPED:
             with self.condition:
@@ -271,4 +282,33 @@ def get_parameter(references):
         return_message.values.values.append(any_msg)
 
     return return_message
+    DTIG_END_IF
+
+<DTIG_METHOD(PUBLIC)>
+def store_parameters():
+    DTIG_IF(DTIG_PARAMETERS)
+    for key, ref in self.value_references.items():
+        DTIG_FOR(DTIG_PARAMETERS)
+        DTIG_IF(DTIG_INDEX == 0)
+        if key == DTIG_STR(DTIG_ITEM_NAME):
+        DTIG_ELSE
+        elif key == DTIG_STR(DTIG_ITEM_NAME):
+        DTIG_END_IF
+            value = self.fmu.getDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([ref])[0]
+            self.parameters[ref] = value
+        DTIG_END_FOR
+    DTIG_END_IF
+
+<DTIG_METHOD(PUBLIC)>
+def load_parameters():
+    DTIG_IF(DTIG_PARAMETERS)
+    for key, ref in self.value_references.items():
+        DTIG_FOR(DTIG_PARAMETERS)
+        DTIG_IF(DTIG_INDEX == 0)
+        if key == DTIG_STR(DTIG_ITEM_NAME):
+        DTIG_ELSE
+        elif key == DTIG_STR(DTIG_ITEM_NAME):
+        DTIG_END_IF
+            self.fmu.setDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([ref], [self.parameters[ref]])
+        DTIG_END_FOR
     DTIG_END_IF

@@ -1,5 +1,4 @@
 import os
-import re
 
 from pathlib import Path
 
@@ -17,7 +16,7 @@ from interface.cpp_generator import HppGenerator, CppGenerator
 engine_folder = os.path.dirname(__file__)
 template_folder = engine_folder + "/templates"
 
-class ClientGeneratorRTI1516():
+class ClientGeneratorOpenRTI1516e():
     def __init__(self, output_file):
         self.output_file = output_file
 
@@ -75,7 +74,7 @@ class ClientGeneratorRTI1516():
 
         return VoidResult()
 
-class HppGeneratorRTI1516(HppGenerator):
+class HppGeneratorRTI1516e(HppGenerator):
     def __init__(self, output_file):
         super().__init__(output_file)
 
@@ -95,7 +94,7 @@ class HppGeneratorRTI1516(HppGenerator):
 
         return super().parse_dtig_language(parser=dtig_parser)
 
-class CppGeneratorRTI1516(CppGenerator):
+class CppGeneratorRTI1516e(CppGenerator):
     def __init__(self, output_file, header_name = None):
         super().__init__(output_file, header_name)
 

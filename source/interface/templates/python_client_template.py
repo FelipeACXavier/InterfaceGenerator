@@ -20,9 +20,9 @@ import dtig.stop_mode_pb2 as dtig_stop_mode
 import dtig.return_value_pb2 as dtig_return
 
 argument_parser = argparse.ArgumentParser(description='Python DTIG client')
-argument_parser.add_argument('-i', action="store", dest="hostname", help='Hostname of the server', default="127.0.0.1")
-argument_parser.add_argument('-p', action="store", dest="port", help='Port of the server', default=8080)
-argument_parser.add_argument('-m', action="store", dest="model_name", help='Model name', default=None)
+argument_parser.add_argument('--host', action="store", dest="hostname", help='Hostname of the server', type=str, default="127.0.0.1")
+argument_parser.add_argument('--port', action="store", dest="port", help='Port of the server', type=int, default=8080)
+argument_parser.add_argument('--model', action="store", dest="model_name", help='Model name', type=str, default=None)
 cmd_args = argument_parser.parse_args()
 
 <DTIG_CLASSNAME>

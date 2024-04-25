@@ -75,7 +75,6 @@ class CalculateCondition(Transformer):
         self.type_to_function = type_to_function
 
     def program(self, tree):
-        LOG_TRACE(f'tree: {tree}')
         return tree
 
     def or_test(self, left, right):
@@ -558,10 +557,13 @@ class Parser:
 
             return all_values
         # Variables =======================
+        # Model name ======================
         elif "DTIG_TYPE_" in var:
-            return self.type_to_regex(var[5:])
+            return self.find_globals(var[5:])
+        elif "DTIG_FORMALISM_" in var:
+            return self.find_globals(var[5:])
         else:
-            return self.type_to_regex(var)
+            return self.find_globals(var)
 
     def get_from_list(self, var, name, key_name):
         if var == f'DTIG_{name}':
@@ -592,12 +594,18 @@ class Parser:
                     names.append(item[KEY_ID])
             return names
 
-    def type_to_regex(self, call):
-        try:
-            # See if we are dealing with a KEY or TYPE
+    def find_globals(self, call):
+        # See if we are dealing with a KEY or TYPE
+        if call in globals():
             return globals()[call]
-        except:
-            return self.key_to_regex(call)
+        elif call.replace("DTIG_", "KEY_") in globals():
+            key = globals()[call.replace("DTIG_", "KEY_")]
+            if not self.cfg.has(key):
+                return None
+
+            return self.cfg[key]
+        else:
+            return call
 
     def key_to_regex(self, call):
         if call == "KEY_ID":
@@ -622,7 +630,7 @@ class Parser:
 if __name__ == "__main__":
     start_logger(LogLevel.TRACE)
     config = JsonConfiguration()
-    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/freecad_config.json")
+    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/fmi_config.json")
 
     p = Parser(config)
 
@@ -632,56 +640,28 @@ if __name__ == "__main__":
     p.to_string = lambda variable_type: f'\"{variable_type}\"'
 
     text = """
-DTIG_DEF DTIG_WRITE_STRING (TYPE, NAME)
-DTIG_IF(DTIG_TYPE_TO_FUNCTION(NAME) == DTIG_TYPE_TO_FUNCTION(TYPE_STRING))
-parameters[mOsDTIG_ITEM_NAME.at(DTIG_STR(TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(NAME)>(message.TYPE().c_str());
-DTIG_ELSE
-parameters[mOsDTIG_ITEM_NAME.at(DTIG_STR(TYPE))] = toData<DTIG_TYPE_TO_FUNCTION(NAME)>(&message.TYPE());
-DTIG_END_IF
-DTIG_END_DEF
+def get_parameter(self, sock):
+    message = dtig_message.MDTMessage()
+    DTIG_FOR(DTIG_PARAMETERS)
+        message.get_parameter.parameters.identifiers.append(DTIG_STR(DTIG_ITEM_NAME))
+    DTIG_END_FOR
 
-DTIG_DEF DTIG_WRITE_PARAMETER (TYPE)
-DTIG_IF(TYPE == DTIG_TYPE_PROP_VALUE)
-DTIG_WRITE_STRING(TYPE, DTIG_ITEM_TYPE)
-DTIG_ELSE_IF(TYPE)
-DTIG_WRITE_STRING(TYPE, TYPE)
-DTIG_END_IF
-DTIG_END_DEF
+    def handler(response):
+        if response.HasField("values"):
+            for i in range(len(response.values.values)):
+                param = response.values.identifiers[i]
+                any_value = response.values.values[i]
+                DTIG_FOR(DTIG_PARAMETERS)
+                DTIG_IF(DTIG_INDEX == 0)
+                if param == DTIG_STR(DTIG_ITEM_NAME):
+                DTIG_ELSE
+                elif param == DTIG_STR(DTIG_ITEM_NAME):
+                DTIG_END_IF
+                    value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
+                    if any_value.Unpack(value):
+                        LOG_INFO(f'DTIG_ITEM_NAME: {value.value}')
+                DTIG_END_FOR
 
-DTIG_FOR(DTIG_OUTPUTS)
-
-// Update the output DTIG_ITEM_NAME:
-rti1516::ParameterHandleValueMap DTIG>CLASSNAME::ParameterMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage)
-{
-  ParameterHandleValueMap parameters;
-
-  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) message;
-  if (!anyMessage.UnpackTo(&message))
-  {
-    std::cout << "Failed to unpack output: DTIG_ITEM_NAME" << std::endl;
-    return parameters;
-  }
-
-  DTIG_IF(DTIG_ITEM_TYPE == TYPE_FORCE OR DTIG_ITEM_TYPE == TYPE_FIXTURE)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_VALUE)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_DIRECTION)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_OBJECT)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_REFERENCE)
-
-  DTIG_ELSE_IF(DTIG_ITEM_TYPE == TYPE_MATERIAL)
-
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_NAME)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_STATE)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_DENSITY)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_YOUNGS_MODULUS)
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_POISSON_RATIO)
-  DTIG_ELSE
-
-  DTIG_WRITE_PARAMETER(DTIG_TYPE_PROP_VALUE)
-  DTIG_END_IF
-
-  return parameters;
-}
-DTIG_END_FOR
+    self.send_message(sock, message, handler)
     """
     LOG_INFO(p.parse(text))

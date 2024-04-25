@@ -1,12 +1,18 @@
+<DTIG_IMPORTS>
+global sm;
+
 <DTIG_CALLBACK(INITIALIZE)>
 function returnValue = initialize_callback(message)
   global status;
+  global sm;
   global modelName;
 
   if message.hasModelName()
     modelName = string(message.getModelName().getValue());
     disp(strcat("Using model: ", modelName));
     returnValue = createReturn(dtig.EReturnCode.SUCCESS);
+
+    sm = simulation(modelName);
   else
     returnValue = createReturn(dtig.EReturnCode.INVALID_OPTION, "No model provided");
   end
@@ -31,11 +37,7 @@ function returnValue = parse_start(message)
 
   % For now, we accept either continuous or stepped simulation
   status.mode = message.getRunMode();
-  if status.mode == dtig.ERunMode.STEPPED
-    status.state = dtig.EState.WAITING;
-  else
-    status.state = dtig.EState.RUNNING;
-  end
+  status.state = dtig.EState.WAITING;
   status.wait = false;
 
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
@@ -97,13 +99,16 @@ function run_model()
   DTIG_END_FOR
 
   disp("Waiting for start");
-  if ~waitForState([dtig.EState.WAITING, dtig.EState.RUNNING])
+  if ~waitForState([dtig.EState.WAITING])
     return;
   end
 
-  % Load the model
-  sm = simulation(modelName);
+  % Reset simulation for multiple runs
+  if sm.Status ~= "inactive"
+    terminate(sm);
+  end
 
+  disp("Starting the model")
   sm = setModelParameter(sm, ...
     StartTime=string(startTime), ...
     StopTime=string(stopTime), ...
@@ -117,9 +122,11 @@ function run_model()
     initialize(sm)
     start(sm)
     pause(sm)
+    status.state = dtig.EState.WAITING;
   else
     initialize(sm)
     start(sm)
+    status.state = dtig.EState.RUNNING;
   end
 
   % Pause a bit otherwise Simulink fails to start
@@ -231,7 +238,7 @@ DTIG_ELSE
 
     DTIG_IF(DTIG_INDEX == 0)
     if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
-      DTIG_ELSE
+    DTIG_ELSE
     elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
       anyValue = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE).newBuilder().setValue(value);
@@ -255,7 +262,7 @@ end
 
 <DTIG_CALLBACK(GET_PARAMETER)>
 function returnValue = get_parameter(references)
-DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
+DTIG_IF(NOT DTIG_PARAMETERS)
   returnValue = createReturn(dtig.EReturnCode.DOES_NOT_EXIST, "Model has no parameters");
 DTIG_ELSE
   global modelName;
@@ -271,7 +278,7 @@ DTIG_ELSE
     reference = references.get(i);
     handle = getSimulinkBlockHandle(strcat(modelName, "/", string(reference)), true);
     if handle < 0
-      returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown input: ", reference));
+      returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown output: ", reference));
       return;
     end
 
@@ -282,7 +289,7 @@ DTIG_ELSE
     DTIG_ELSE
     elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
-    DTIG_IF(DTIG_ITEM_TYPE == TYPE_STRING)
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_STRING)
       param_value = get_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE));
     DTIG_ELSE
       param_value = eval(get_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)));
