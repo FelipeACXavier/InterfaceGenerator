@@ -1,14 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "DTIG Language",
-  "injectionSelector": "L:",
+  "injectionSelector": "L: -comment",
   "patterns": [
     { "include": "#definition" },
-    { "include": "#types-keys" },
-    { "include": "#getters" },
+    { "include": "#ctrl-statements" },
     { "include": "#functions" },
-    { "include": "#append" },
-    { "include": "#ctrl-statements" }
+    { "include": "#types-keys" },
+    { "include": "#getters" }
   ],
   "repository": {
     "expression": {
@@ -29,6 +28,19 @@
           },
           "name": "constant.character.delimiter.dtig",
           "match": "^<(DTIG_[A-Z_]+)\\b(\\(([A-Z_]*)\\))?.*>"
+        },
+        {
+          "captures": {
+            "1": { "name": "entity.name.class.dtig" },
+            "2": { "name": "keyword.function.dtig" },
+            "3": { "name": "variable.parameter.dtig" }
+          },
+          "name": "constant.character.delimiter.dtig",
+          "match": "(DTIG_DEF) (DTIG_[A-Z_]+)\\s?\\(([A-Z_, ]*)\\)"
+        },
+        {
+          "name": "entity.name.class.dtig",
+          "match": "DTIG_END_DEF"
         }
       ]
     },
@@ -36,10 +48,10 @@
       "patterns": [
         {
           "captures": {
-            "1": { "name": "keyword.function.dtig" },
+            "1": { "name": "entity.name.function.dtig" },
             "2": { "patterns": [{ "include": "#expression" }] }
           },
-          "match": "(DTIG_STR|DTIG_TO_PROTO_MESSAGE|DTIG_TYPE_TO_FUNCTION)\\((.*?)\\)"
+          "match": "(DTIG_[A-Z_]+)\\(([\\w\\d_,> ]*)\\)"
         },
         {
           "captures": {
@@ -54,14 +66,14 @@
       "patterns": [
         {
           "captures": {
-            "1": { "name": "keyword.control" },
+            "1": { "name": "keyword.control.start.dtig" },
             "2": { "patterns": [{ "include": "#expression" }] }
           },
-          "match": "(DTIG_IF|DTIG_FOR)\\((.*?)\\)"
+          "match": "(DTIG_IF|DTIG_FOR)\\((.*)\\)"
         },
         {
-          "name": "keyword.control",
-          "match": "\\b(DTIG_ELSE|DTIG_END_IF|DTIG_END_FOR)\\b"
+          "name": "keyword.control.end.dtig",
+          "match": "\\b(DTIG_ELSE|DTIG_ELSE_IF|DTIG_END_IF|DTIG_END_FOR)\\b"
         }
       ]
     },
@@ -80,8 +92,12 @@
           "match": "(DTIG_ITEM_[A-Z_]+|DTIG_[A-Z_]+?_LENGTH|DTIG_INDEX)"
         },
         {
-          "name": "entity.name.class",
+          "name": "entity.name.class.dtig",
           "match": "\\b(DTIG_INPUTS|DTIG_OUTPUTS|DTIG_PARAMETERS)\\b"
+        },
+        {
+          "name": "variable.name.variable.dtig",
+          "match": "DTIG>[A-Z_]+"
         }
       ]
     },
@@ -89,13 +105,16 @@
       "patterns": [
         {
           "name": "constant.character.key.dtig",
-          "match": "\\b(KEY_[A-Z_]+)\\b"
+          "match": "\\b(DTIG_KEY_[A-Z_]+)\\b"
         },
         {
           "name": "constant.character.type.dtig",
-          "match": "\\b(TYPE_[A-Z_]+)\\b"
+          "match": "\\b(DTIG_TYPE_[A-Z_]+)\\b"
+        },
+        {
+          "name": "constant.character.formalism.dtig",
+          "match": "\\b(DTIG_FORMALISM_[A-Z_]+)\\b"
         }
-
       ]
     },
     "numbers": {
@@ -110,7 +129,7 @@
       "patterns": [
         {
           "name": "keyword.operator.dtig",
-          "match": "(==|!=|<|>|<=|>=)"
+          "match": "\\b(==|!=|<|>|<=|>=)\\b"
         },
         {
           "name": "keyword.operator.dtig",

@@ -34,6 +34,11 @@
           "source.matlab",
           "source.cpp"
         ]
+      },
+      {
+        "language": "dtig",
+        "scopeName": "source.dtig.injection",
+        "path": "./syntaxes/dtig.tmLanguage.json"
       }
     ]
   }
