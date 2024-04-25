@@ -1,0 +1,67 @@
+{
+  "name": "Bouncing ball",
+  "model_path": "/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/models/fmi2.fmu",
+  "description": "A simple cantilever beam",
+  "server": "fmi2",
+  "client": "hla_rti1516",
+  "step_size": 0.005,
+  "stop_time": 5.0,
+  "formalism": "continuous",
+  "outputs": [
+    {
+      "id": 0,
+      "name": "h",
+      "description": "Height of the ball",
+      "type": "float64",
+      "unit": "m",
+      "default": 0.0,
+      "namespace": "InteractionRoot"
+    },
+    {
+      "id": 1,
+      "name": "v",
+      "description": "Velocity of the ball",
+      "type": "float64",
+      "unit": "m/s",
+      "default": 0.0,
+      "namespace": "InteractionRoot"
+    }
+  ],
+  "parameters": [
+    {
+      "id": 0,
+      "name": "g",
+      "description": "Gravity",
+      "type": "float64",
+      "unit": "m/s^2",
+      "default": 9.81,
+      "namespace": "ObjectRoot.Parameters"
+    },
+    {
+      "id": 1,
+      "name": "e",
+      "description": "Coefficient of restitution",
+      "type": "float64",
+      "default": 0.7,
+      "namespace": "ObjectRoot.Parameters"
+    },
+    {
+      "id": 2,
+      "name": "h",
+      "description": "Initial height of the ball",
+      "type": "float64",
+      "unit": "m",
+      "default": 5,
+      "namespace": "ObjectRoot.Parameters"
+    },
+    {
+      "id": 3,
+      "name": "v",
+      "description": "Initial velocity of the ball",
+      "type": "float64",
+      "unit": "m/s",
+      "default": 0.0,
+      "namespace": "ObjectRoot.Parameters"
+    }
+  ]
+}

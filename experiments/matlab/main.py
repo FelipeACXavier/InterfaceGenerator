@@ -19,12 +19,12 @@ def main():
     generator = None
     output_name = None
 
-    if not config.has(KEY_ENGINE):
+    if not config.has(KEY_SERVER):
         LOG_ERROR("No engine provided")
         return
 
     file_system.create_dir(output_dir)
-    if config[KEY_ENGINE] == ENGINE_MATLAB_2024a:
+    if config[KEY_SERVER] == ENGINE_MATLAB_2024a:
         # Engine specific import
         from engines.matlab2024a.generator_matlab2024a import ServerGeneratorMatlab2024a
         from engines.matlab2024a.generator_simulink2024a import ServerGeneratorSimulink2024a
@@ -56,7 +56,7 @@ def main():
             LOG_ERROR(f'Javac failed to compile file: {compiled}')
 
     else:
-        LOG_ERROR(f'Unknown engine {config[KEY_ENGINE]}')
+        LOG_ERROR(f'Unknown engine {config[KEY_SERVER]}')
         return
 
     if generator:

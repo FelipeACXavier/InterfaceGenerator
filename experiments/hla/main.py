@@ -47,12 +47,12 @@ def main():
     compiler = None
     generator = None
 
-    if not config.has(KEY_ENGINE):
+    if not config.has(KEY_CLIENT):
         LOG_ERROR("No engine provided")
         return
 
     file_system.create_dir(output_dir)
-    if config[KEY_ENGINE] == ENGINE_HLA_RTI1516:
+    if config[KEY_CLIENT] == ENGINE_HLA_RTI1516:
         # Make sure the OpenRTI library is available
         if not os.path.isdir(rti_dir):
             cloned = git.Git("https://github.com/onox/OpenRTI.git").clone(rti_dir)
@@ -78,7 +78,7 @@ def main():
 
         compiler = create_cmake_compiler(output_dir)
     else:
-        LOG_ERROR(f'Unknown engine {config[KEY_ENGINE]}')
+        LOG_ERROR(f'Unknown engine {config[KEY_CLIENT]}')
         return
 
     if generator:

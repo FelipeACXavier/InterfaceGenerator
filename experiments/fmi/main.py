@@ -18,15 +18,15 @@ def main():
 
     generator = None
     output_name = None
-    if not config.has(KEY_ENGINE):
+    if not config.has(KEY_SERVER):
         LOG_ERROR("No engine provided")
         return
 
     file_system.create_dir(output_dir)
-    if config[KEY_ENGINE] == ENGINE_FMI2:
+    if config[KEY_SERVER] == ENGINE_FMI2:
         generator = ServerGeneratorFMI2(output_dir + ENGINE_FMI2)
     else:
-        LOG_ERROR(f'Unknown engine {config[KEY_ENGINE]}')
+        LOG_ERROR(f'Unknown engine {config[KEY_SERVER]}')
         return
 
     result = protobuf.generate_python(output_dir)

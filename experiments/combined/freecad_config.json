@@ -1,0 +1,73 @@
+{
+  "name": "Cantilever beam model",
+  "model_path": "/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/models/FemTest.FCStd",
+  "description": "A simple cantilever beam",
+  "server": "freecad021",
+  "client": "hla_rti1516",
+  "step_size": 0.005,
+  "stop_time": 5.0,
+  "formalism": "fem",
+  "inputs": [
+    {
+      "id": 0,
+      "name": "force",
+      "description": "Force acting on the beam",
+      "type": "float64",
+      "unit": "N.m",
+      "namespace": "InteractionRoot"
+    }
+  ],
+  "outputs": [
+    {
+      "id": 0,
+      "name": "Mesh",
+      "description": "Resulting mesh after applying forces on the beam",
+      "type": "mesh",
+      "default": "Result.obj",
+      "namespace": "InteractionRoot"
+    },
+    {
+      "id": 1,
+      "name": "vonMises",
+      "description": "Maximum von Mises stress",
+      "type": "float64",
+      "modifier": "max",
+      "namespace": "InteractionRoot"
+    },
+    {
+      "id": 2,
+      "name": "DisplacementLengths",
+      "description": "Maximum displacement",
+      "type": "float64",
+      "modifier": "max",
+      "namespace": "InteractionRoot"
+    }
+  ],
+  "parameters": [
+    {
+      "id": 0,
+      "name": "Material",
+      "description": "Material of the beam",
+      "type": "material",
+      "namespace": "ObjectRoot.Parameters",
+      "default": {
+        "state": "solid",
+        "name": "Aluminium-Generic",
+        "youngs_modulus": "70 GPa",
+        "poisson_ratio": "0.350",
+        "density": "2700 kg/m^3"
+      }
+    },
+    {
+      "id": 1,
+      "name": "fixed",
+      "description": "Fixed constraint of the beam",
+      "type": "fixture",
+      "namespace": "ObjectRoot.Parameters",
+      "default": {
+        "object":    "Box",
+        "reference": "Face1"
+      }
+    }
+  ]
+}

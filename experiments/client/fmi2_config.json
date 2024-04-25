@@ -4,7 +4,7 @@
   "authors": "Author's name",
   "version": "1.0.0",
   "formalism": "continuous",
-  "engine": "matlab2024a",
+  "client": "cmd",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
