@@ -69,11 +69,11 @@
             "1": { "name": "keyword.control.start.dtig" },
             "2": { "patterns": [{ "include": "#expression" }] }
           },
-          "match": "(DTIG_IF|DTIG_FOR)\\((.*)\\)"
+          "match": "(DTIG_IF|DTIG_FOR|DTIG_ELSE_IF)\\((.*)\\)"
         },
         {
           "name": "keyword.control.end.dtig",
-          "match": "\\b(DTIG_ELSE|DTIG_ELSE_IF|DTIG_END_IF|DTIG_END_FOR)\\b"
+          "match": "\\b(DTIG_ELSE|DTIG_END_IF|DTIG_END_FOR)\\b"
         }
       ]
     },
