@@ -239,7 +239,7 @@ class Parser(Evaluator):
 
                 if end_mode == TOKEN_ELSE:
                     try:
-                         end, else_body, end_mode = self.get_end(iter_body, fr'\bDTIG_IF\b', fr'\bDTIG_END_IF\b', TOKEN_END_IF)
+                         end, else_body, end_mode = self.get_end(iter_body, fr'\b({TOKEN_IF})\b', fr'\b({TOKEN_END_IF})\b', TOKEN_END_IF)
                     except Exception as e:
                         raise Exception(f"End of {TOKEN_ELSE} not found: {TOKEN_IF}({condition})...{TOKEN_ELSE}")
 
@@ -271,7 +271,7 @@ class Parser(Evaluator):
                 self.index += end
 
                 try:
-                    end, for_body, end_mode = self.get_end(iter_body, fr"({TOKEN_FOR})", fr"\b({TOKEN_END_FOR})\b", TOKEN_END_FOR)
+                    end, for_body, end_mode = self.get_end(iter_body, fr"\b({TOKEN_FOR})\b", fr"\b({TOKEN_END_FOR})\b", TOKEN_END_FOR)
                 except Exception as e:
                         raise Exception(f"End of {TOKEN_FOR} not found: {TOKEN_FOR}({condition})...{TOKEN_END_FOR}")
 
@@ -353,7 +353,7 @@ class Parser(Evaluator):
                 function_args, iter_body, end = self.get_arguments(iter_body, TOKEN_DEF)
                 self.index += end
 
-                end, function_body, end_mode = self.get_end(iter_body, fr"({TOKEN_DEF})", fr"\b({TOKEN_END_DEF})\b", TOKEN_END_DEF)
+                end, function_body, end_mode = self.get_end(iter_body, fr"\b({TOKEN_DEF})\b", fr"\b({TOKEN_END_DEF})\b", TOKEN_END_DEF)
                 self.functions[function_name] = {
                     "body": function_body,
                     "args": function_args
@@ -549,7 +549,7 @@ class Parser(Evaluator):
 if __name__ == "__main__":
     from common.json_configuration import JsonConfiguration
 
-    start_logger(LogLevel.DEBUG)
+    start_logger(LogLevel.TRACE)
     config = JsonConfiguration()
     config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/fmi_config.json")
 
@@ -561,26 +561,94 @@ if __name__ == "__main__":
     p.to_string = lambda variable_type: f'\"{variable_type}\"'
 
     text = """
-    DTIG_DEF DTIG_READ_STRING(TYPE, NAME, INDEX)
-    DTIG_IF(DTIG>INDEX == 0)
-    if (item == DTIG_STR(DTIG>TYPE))
+DTIG_FOR(DTIG_INPUTS)
+// Set the input DTIG_ITEM_NAME:
+void DTIG>CLASSNAME::inputUpdatedDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& parameterValues)
+{
+  dtig::MInput inputMessage;
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) value = ProtoInputFromDTIG_ITEM_NAME(parameterValues);
+  *inputMessage.mutable_inputs()->add_identifiers() = DTIG_STR(DTIG_ITEM_NAME);
+  inputMessage.mutable_inputs()->add_values()->PackFrom(value);
+  dtig::MDTMessage message;
+  *message.mutable_set_input() = inputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to set DTIG_ITEM_NAME: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  dtig::MDTMessage message;
+  *message.mutable_set_input() = inputMessage;
+  dtig::MReturnValue ret = SendMessage(message);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Failed to set inputs: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+DTIG_IF(DTIG_FORMALISM == DTIG_FORMALISM_DISCRETE)
+  dtig::MStart startvalue;
+  startvalue.mutable_start_time()->set_value(0.0f);
+  startvalue.mutable_stop_time()->set_value(STOP_TIME);
+  startvalue.mutable_step_size()->set_step(STEP);
+  startvalue.set_run_mode(dtig::Run::CONTINUOUS);
+
+  dtig::MDTMessage startMessage;
+  *startMessage.mutable_start() = startvalue;
+
+  dtig::MGetStatus statusValue;
+  dtig::MDTMessage statusMessage;
+  statusValue.set_request(true);
+  *statusMessage.mutable_get_status() = statusValue;
+
+  ret = SendMessage(startMessage);
+  if (ret.code() != dtig::ReturnCode::SUCCESS)
+  {
+    std::cout << "Stopped: " << ret.error_message().value() << std::endl;
+    return;
+  }
+
+  do
+  {
+    // Wait until model is ready
+    ret = SendMessage(statusMessage);
+    if (ret.has_status() && ret.status().state() == dtig::State::EState::RUNNING)
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    else
+      break;
+  } while (true);
+
+  DTIG>CALLBACK(GET_OUTPUT)();
+DTIG_END_IF
+}
+
+DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) DTIG>CLASSNAME::ProtoInputFromDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles)
+{
+  DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) anyValue;
+  for (auto it = handles.begin(); it != handles.end(); ++it)
+  {
+    std::string item = mIsDTIG_ITEM_NAME[it->first];
+    DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_MAGNITUDE, 0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_OBJECT,    1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_REFERENCE, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DIRECTION, 3)
+    DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_STATE,          0)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_NAME,           1)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_YOUNGS_MODULUS, 2)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_POISSON_RATIO,  3)
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_DENSITY,        4)
     DTIG_ELSE
-    else if (item == DTIG_STR(DTIG>TYPE))
+    DTIG_READ_FROM_DATA(DTIG_TYPE_PROP_VALUE,          0)
     DTIG_END_IF
-    DTIG_IF(DTIG>TYPE == DTIG>NAME)
-      anyValue.mutable_DTIG>TYPE()->set_value(fromData<DTIG_TYPE_TO_FUNCTION(DTIG>TYPE)>(it->second));
-    DTIG_ELSE
-    {
-      auto val = fromData<DTIG_TYPE_TO_FUNCTION(DTIG>NAME)>(it->second);
-      std::cout << "Setting input DTIG_ITEM_NAME: " << val << std::endl;
-      anyValue.set_value(val);
-    }
-    DTIG_END_IF
-    DTIG_END_DEF
-    DTIG_FOR(DTIG_OUTPUTS)
-    DTIG_READ_STRING(DTIG_TYPE_PROP_VALUE, DTIG_TYPE_PROP_VALUE, 0)
-    DTIG_READ_STRING(DTIG_TYPE_PROP_VALUE, DTIG_TYPE_PROP_VALUE, 1)
-    DTIG_END_FOR
+    else
+      std::cout << "ProtoInputFromDTIG_ITEM_NAME unknown handle: " << item << std::endl;
+  }
+  return anyValue;
+}
+DTIG_END_FOR
 """
 
     LOG_INFO(f'{p.parse(text)}')
