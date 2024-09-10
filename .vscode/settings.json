@@ -1,0 +1,14 @@
+{
+  "clangd.fallbackFlags": [
+    "-I${workspaceFolder}/experiments/hla/hla_build",
+    "-I${workspaceFolder}/experiments/hla/source",
+    "-I${workspaceFolder}/experiments/hla/install/include/RTI13",
+    "-I${workspaceFolder}/experiments/hla/install/include/rti1516",
+    "-I${workspaceFolder}/experiments/hla/install/include/rti1516e",
+    "-I${workspaceFolder}/experiments/hla/source/CppHelpers/logging",
+    // Protos
+    "-I${workspaceFolder}/build/crossplatform/system/protobuf",
+    "-I${workspaceFolder}/build/crossplatform/3rdparty/pep_server/protobuf",
+    "-I${workspaceFolder}/3rdparty/grpc/grpc_prebuilt/develop/include",
+  ]
+}
