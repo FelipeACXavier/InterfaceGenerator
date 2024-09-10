@@ -1,0 +1,80 @@
+{
+  "name": "Bouncing ball",
+  "model_path": "/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/models/fmi2.fmu",
+  "description": "A simple cantilever beam",
+  "client": "openrti1516_cmd",
+  "step_size": 0.005,
+  "stop_time": 5.0,
+  "formalism": "continuous",
+  "parameters": [
+    {
+      "id": 0,
+      "name": "g",
+      "description": "Gravity",
+      "type": "float64",
+      "unit": "m/s^2",
+      "default": 9.81,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 1,
+      "name": "e",
+      "description": "Coefficient of restitution",
+      "type": "float64",
+      "default": 0.7,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 3,
+      "name": "floor",
+      "description": "Floor height",
+      "type": "float64",
+      "unit": "m",
+      "default": 0.0,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 4,
+      "name": "mass",
+      "description": "Mass of the object",
+      "type": "float64",
+      "unit": "kg",
+      "default": 30,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 5,
+      "name": "v0",
+      "description": "Initial velocity",
+      "type": "float64",
+      "unit": "m/s",
+      "default": 0.0,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 6,
+      "name": "Material",
+      "description": "Material of the beam",
+      "type": "material",
+      "namespace": "InteractionRoot.Parameters",
+      "default": {
+        "state": "solid",
+        "name": "Aluminium-Generic",
+        "youngs_modulus": "70 GPa",
+        "poisson_ratio": "0.350",
+        "density": "2700 kg/m^3"
+      }
+    },
+    {
+      "id": 7,
+      "name": "fixed",
+      "description": "Fixed constraint of the beam",
+      "type": "fixture",
+      "namespace": "InteractionRoot.Parameters",
+      "default": {
+        "object":    "Box",
+        "reference": "Face1"
+      }
+    }
+  ]
+}

@@ -1,18 +1,17 @@
-FREECADPATH = '/usr/lib/freecad-python3/lib/'
-FREECADFEMPATH = '/usr/lib/freecad/Mod/Fem/'
-FREECADPYSIDEPATH = '/usr/share/freecad/Ext/'
-DISTPACKAGESPATH = '/usr/lib/python3/dist-packages/'
+PATH='/media/felaze/NotAnExternalDrive/Projects/squashfs-root/usr/'
+FREECADPATH = PATH + 'lib/'
+FREECADFEMPATH = PATH + 'Mod/Fem/'
+FREECADPYSIDEPATH = PATH + 'Ext/'
 
 import sys
 sys.path.append(FREECADPATH)
 sys.path.append(FREECADFEMPATH)
 sys.path.append(FREECADPYSIDEPATH)
 
-sys.path.append(DISTPACKAGESPATH)
-
 import FreeCAD, FreeCADGui, Part
 from tools.file_system import current_dir, remove_file
 
+print("Opening document")
 filename = f'{current_dir()}/FemTest.FCStd'
 doc = FreeCAD.open(filename)
 
@@ -24,6 +23,7 @@ analysis_object = None
 force_constraint = None
 fixed_constraint = None
 
+print("Inspecting objects")
 objects = doc.Objects
 for ob in objects:
     print(f'{ob.Name} - {ob.Label}')
@@ -141,9 +141,12 @@ if not femmesh_obj:
 doc.recompute()
 
 print("Running simulation")
+import PySide
+print("Running PySide")
 
 from femtools import ccxtools
 
+print("Running FemToolsCcx")
 fea = ccxtools.FemToolsCcx(analysis=analysis_object, solver=solver_object)
 fea.purge_results()
 if not fea.run():

@@ -55,23 +55,20 @@ def main():
     config.parse(args.config_file)
 
     if not config.has(KEY_SERVER):
-        LOG_ERROR("No server provided")
-        return
+        LOG_WARNING("No server provided")
+
 
     if not config.has(KEY_CLIENT):
-        LOG_ERROR("No client provided")
-        return
+        LOG_WARNING("No client provided")
 
     generator = None
     compiler = None
 
     server_output_dir = output_dir + f"/{config[KEY_SERVER]}/"
     file_system.create_dir(server_output_dir)
-    if args.no_client:
+    if args.no_client or not config.has(KEY_CLIENT):
         pass
-    elif config[KEY_CLIENT] == ENGINE_HLA_RTI1516:
-        from engines.hla_rti1516.generator_hla import ClientGeneratorRTI1516
-
+    elif config[KEY_CLIENT] == ENGINE_OPENRTI1516 or config[KEY_CLIENT] == ENGINE_OPENRTI1516_CMD:
         # Update output dir
         rti_dir = output_dir + "/OpenRTI/"
         file_system.create_dir(server_output_dir)
@@ -90,7 +87,12 @@ def main():
             LOG_ERROR(compiled)
             return
 
-        generator = ClientGeneratorRTI1516(f'{server_output_dir}{config[KEY_CLIENT]}')
+        if config[KEY_CLIENT] == ENGINE_OPENRTI1516:
+            from engines.openrti1516.generator_openrti import ClientGeneratorRTI1516
+            generator = ClientGeneratorRTI1516(f'{server_output_dir}{config[KEY_CLIENT]}')
+        else:
+            from engines.openrti1516.generator_openrti_cmd import ClientGeneratorRTI1516CMD
+            generator = ClientGeneratorRTI1516CMD(f'{server_output_dir}{config[KEY_CLIENT]}')
 
         # Generate protobuf for C++
         if args.compile_proto:
@@ -121,11 +123,11 @@ def main():
             LOG_ERROR(f'Failed to compile server file: {compiled}')
             return
 
-    # No server >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    if args.no_server:
+    # No server >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    if args.no_server or not config.has(KEY_SERVER):
         pass
-    # No server <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    # FMI2 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # No server <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # FMI2 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elif config[KEY_SERVER] == ENGINE_FMI2:
         from engines.fmi2.generator_fmi2 import ServerGeneratorFMI2
         generator = ServerGeneratorFMI2(server_output_dir + config[KEY_SERVER])
@@ -182,9 +184,8 @@ def main():
         if not generated:
             LOG_ERROR(f'Failed to generate server: {generated}')
             return
-
-    # Matlab <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    # FreeCAD >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # Matlab <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # FreeCAD >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elif config[KEY_SERVER] == ENGINE_FREECAD_021:
         from engines.freecad.generator_freecad import ServerGeneratorFreeCAD
         generator = ServerGeneratorFreeCAD(server_output_dir + ENGINE_FREECAD_021)
@@ -199,7 +200,7 @@ def main():
         if not generated:
             LOG_ERROR(f'Failed to generate FreeCAD server: {generated}')
             return
-    # FreeCAD <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # FreeCAD <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     else:
         LOG_ERROR(f'Unknown engine {config[KEY_SERVER]}')
         return

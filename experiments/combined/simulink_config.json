@@ -1,8 +1,7 @@
 {
-  "name": "Bouncing ball",
-  "model_path": "/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/models/fmi2.fmu",
-  "description": "A simple bouncing ball",
-  "server": "fmi2",
+  "name": "Force calculator",
+  "model_path": "bouncing_ball",
+  "server": "simulink2024a",
   "client": "openrti1516",
   "step_size": 0.005,
   "stop_time": 5.0,
@@ -43,6 +42,24 @@
       "description": "Coefficient of restitution",
       "type": "float64",
       "default": 0.7,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 2,
+      "name": "h0",
+      "description": "Initial height of the ball",
+      "type": "float64",
+      "unit": "m",
+      "default": 5,
+      "namespace": "InteractionRoot.Parameters"
+    },
+    {
+      "id": 3,
+      "name": "v0",
+      "description": "Initial velocity of the ball",
+      "type": "float64",
+      "unit": "m/s",
+      "default": 0.0,
       "namespace": "InteractionRoot.Parameters"
     }
   ]

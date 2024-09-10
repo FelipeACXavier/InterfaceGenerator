@@ -2,7 +2,7 @@
   "name": "Force calculator",
   "model_path": "force_calculator_script",
   "server": "matlab2024a",
-  "client": "hla_rti1516",
+  "client": "openrti1516",
   "step_size": 0.005,
   "stop_time": 5.0,
   "formalism": "discrete",
@@ -35,7 +35,7 @@
       "type": "float64",
       "unit": "m",
       "default": 0.0,
-      "namespace": "ObjectRoot.Parameters"
+      "namespace": "InteractionRoot.Parameters"
     },
     {
       "id": 1,
@@ -43,8 +43,8 @@
       "description": "Mass of the object",
       "type": "float64",
       "unit": "kg",
-      "default": 30,
-      "namespace": "ObjectRoot.Parameters"
+      "default": 50,
+      "namespace": "InteractionRoot.Parameters"
     },
     {
       "id": 2,
@@ -53,7 +53,7 @@
       "type": "float64",
       "unit": "m/s",
       "default": 0.0,
-      "namespace": "ObjectRoot.Parameters"
+      "namespace": "InteractionRoot.Parameters"
     }
   ]
 }

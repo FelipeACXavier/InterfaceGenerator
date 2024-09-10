@@ -13,14 +13,6 @@
          transportation="HLAreliable"
          order="TimeStamp"/>
       <objectClass name="RTIprivate"/>
-      <objectClass name="Parameters">
-        <objectClass name="floor">
-          <attribute name="value" order="TimeStamp" transportation="HLAreliable"/>
-        </objectClass>
-        <objectClass name="mass">
-          <attribute name="value" order="TimeStamp" transportation="HLAreliable"/>
-        </objectClass>
-      </objectClass>
       <objectClass name="Manager">
         <objectClass name="federation">
             <attribute name="FederationName" transportation="HLAreliable" order="Receive"/>
@@ -62,22 +54,65 @@
   </objects>
 
   <interactions>
-    <interactionClass name="InteractionRoot" sharing="Neither" dimensions="NA" transportation="HLAreliable" order="TimeStamp">
+    <interactionClass name="InteractionRoot" sharing="PublishSubscribe" dimensions="NA" transportation="HLAreliable" order="TimeStamp">
       <interactionClass name="RTIprivate"/>
-      <interactionClass name="Inputs" transportation="HLAreliable" order="TimeStamp">
-        <interactionClass name="h" transportation="HLAreliable" order="TimeStamp">
-          <parameter name="value"/>
+      <interactionClass name="h" transportation="HLAreliable" order="TimeStamp">
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="v" transportation="HLAreliable" order="TimeStamp">
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="force">
+        <parameter name="magnitude"/>
+        <parameter name="object"/>
+        <parameter name="reference"/>
+        <parameter name="direction"/>
+        <!-- For tests -->
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="Mesh" transportation="HLAreliable" order="TimeStamp">
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="vonMises" transportation="HLAreliable" order="TimeStamp">
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="DisplacementLengths" transportation="HLAreliable" order="TimeStamp">
+        <parameter name="value"/>
+      </interactionClass>
+      <interactionClass name="Parameters" sharing="PublishSubscribe">
+        <interactionClass name="g">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
         </interactionClass>
-        <interactionClass name="v" transportation="HLAreliable" order="TimeStamp">
-          <parameter name="value"/>
+        <interactionClass name="e">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="h0">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="v0">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="floor">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="mass">
+          <parameter name="value" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="Material">
+          <parameter name="state" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="name" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="youngs_modulus" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="poisson_ratio" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="density" order="TimeStamp" transportation="HLAreliable"/>
+        </interactionClass>
+        <interactionClass name="fixed">
+          <parameter name="magnitude" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="object" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="reference" order="TimeStamp" transportation="HLAreliable"/>
+          <parameter name="direction" order="TimeStamp" transportation="HLAreliable"/>
         </interactionClass>
       </interactionClass>
-      <interactionClass name="Outputs" transportation="HLAreliable" order="TimeStamp">
-        <interactionClass name="f" transportation="HLAreliable" order="TimeStamp">
-          <parameter name="value"/>
-        </interactionClass>
-      </interactionClass>
-   </interactionClass>
+    </interactionClass>
   </interactions>
 
 

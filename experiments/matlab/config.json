@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "formalism": "continuous",
   "server": "matlab2024a",
-  "client": "hla_rti1516",
+  "client": "openrti1516",
   "step": 1000,
   "minimumstep": 100,
   "lookahead": 5000,
