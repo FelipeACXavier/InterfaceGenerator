@@ -15,10 +15,15 @@ keywords = ["interface", "digital", "twin"]
 
 # Dependencies
 dependencies = [
-    "protobuf == 3.20.3",
-    "FMPy == 0.3.20",
-    "plotly == 5.20.0",  # For testing this is quite nice
+    "lark==1.1.9",       # To parse
+    "pytest==8.1.1",
+    "protobuf==3.20.3",
     "autopep8==2.1.0",
-    "cmake==3.29.0.1",    # To simplify build of C and C++ models
-    "lark==1.1.9"
+    "cmake==3.29.0.1",   # To simplify build of C and C++ models
+    "FMPy==0.3.20",      # To run FMI models
+    "plotly==5.20.0",    # For testing, this is quite nice
+
+    # Required for FreeCAD, which should be installed externally
+    # The current version uses FreeCAD 0.21.2 installed through AppImage
+    "PySide2==5.15.2.1"
 ]
