@@ -99,5 +99,7 @@ bool isAdvancing;
 bool isAnnounced;
 bool isReadyToRun;
 
-std::function<void(rti1516::ObjectInstanceHandle theObject, const rti1516::AttributeHandleValueMap& theAttributeValues)> attributeReceived;
-std::function<void(rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues)> interactionReceived;
+std::function<void(rti1516::ObjectInstanceHandle theObject,
+  const rti1516::AttributeHandleValueMap& theAttributeValues)> attributeReceived;
+std::function<void(rti1516::InteractionClassHandle theInteraction,
+  const rti1516::ParameterHandleValueMap& theParameterValues)> interactionReceived;

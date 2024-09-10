@@ -1,6 +1,3 @@
-<DTIG_IMPORTS>
-global sm;
-
 <DTIG_CALLBACK(INITIALIZE)>
 function returnValue = initialize_callback(message)
   global status;
@@ -37,7 +34,11 @@ function returnValue = parse_start(message)
 
   % For now, we accept either continuous or stepped simulation
   status.mode = message.getRunMode();
-  status.state = dtig.EState.WAITING;
+  if status.mode == dtig.ERunMode.STEPPED
+    status.state = dtig.EState.WAITING;
+  else
+    status.state = dtig.EState.RUNNING;
+  end
   status.wait = false;
 
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
@@ -48,9 +49,9 @@ function returnValue = parse_stop(~)
   global sm;
   if ~isempty(sm) && sm.Status ~= "inactive"
     pause(sm);
-    stop(sm);
   end
 
+  stop(sm);
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
 end
 
@@ -99,7 +100,7 @@ function run_model()
   DTIG_END_FOR
 
   disp("Waiting for start");
-  if ~waitForState([dtig.EState.WAITING])
+  if ~waitForState([dtig.EState.WAITING, dtig.EState.RUNNING])
     return;
   end
 
@@ -138,8 +139,8 @@ end
 
 <DTIG_CALLBACK(SET_INPUT)>
 function returnValue = set_input(reference, anyValue)
-DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
-  returnValue = createReturn(dtig.EReturnCode.DOES_NOT_EXIST, "Model has no parameters");
+DTIG_IF(NOT DTIG_INPUTS)
+  returnValue = createReturn(dtig.EReturnCode.DOES_NOT_EXIST, "Model has no inputs");
 DTIG_ELSE
   global modelName;
   DTIG_FOR(DTIG_INPUTS)
@@ -166,7 +167,7 @@ DTIG_ELSE
   elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
   DTIG_END_IF
     DTIG_ITEM_NAME = value.getValue();
-    set_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE), DTIG_STR(DTIG_ITEM_NAME));
+    set_param(handle, DTIG_TO_TYPE(DTIG_ITEM_TYPE), DTIG_STR(DTIG_ITEM_NAME));
   DTIG_END_FOR
   end
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
@@ -175,7 +176,7 @@ end
 
 <DTIG_CALLBACK(SET_PARAMETER)>
 function returnValue = set_parameter(reference, anyValue)
-DTIG_IF(NOT DTIG_PARAMETERS_LENGTH)
+DTIG_IF(NOT DTIG_PARAMETERS)
   returnValue = createReturn(dtig.EReturnCode.DOES_NOT_EXIST, "Model has no parameters");
 DTIG_ELSE
   global modelName;
@@ -185,7 +186,7 @@ DTIG_ELSE
 
   handle = getSimulinkBlockHandle(strcat(modelName, "/", string(reference)), true);
   if handle < 0
-    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown input: ", reference));
+    returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown parameter: ", reference));
     return;
   end
 
@@ -203,7 +204,7 @@ DTIG_ELSE
   elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
   DTIG_END_IF
     DTIG_ITEM_NAME = value.getValue();
-    set_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE), DTIG_STR(DTIG_ITEM_NAME));
+    set_param(handle, DTIG_TO_TYPE(DTIG_ITEM_TYPE), DTIG_STR(DTIG_ITEM_NAME));
   DTIG_END_FOR
   end
   returnValue = createReturn(dtig.EReturnCode.SUCCESS);
@@ -212,7 +213,7 @@ end
 
 <DTIG_CALLBACK(GET_OUTPUT)>
 function returnValue = get_output(references)
-DTIG_IF(NOT DTIG_OUTPUTS_LENGTH)
+DTIG_IF(NOT DTIG_OUTPUTS)
   returnValue = createReturn(dtig.EReturnCode.DOES_NOT_EXIST, "Model has no outputs");
 DTIG_ELSE
   global sm;
@@ -232,10 +233,13 @@ DTIG_ELSE
 
   for i = 0:nIds
     reference = references.get(i);
-    value = find(sm.SimulationOutput.logsout, string(reference)).Values.Data(end);
+    simulinkReference = find(sm.SimulationOutput, string(reference));
+    if isempty(simulinkReference)
+      continue
+    end
 
+    value = simulinkReference.Data(end);
     DTIG_FOR(DTIG_OUTPUTS)
-
     DTIG_IF(DTIG_INDEX == 0)
     if string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_ELSE
@@ -247,7 +251,6 @@ DTIG_ELSE
       returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown output: ", reference));
       return;
     end
-
     dtigOutputs.addIdentifiers(reference);
     dtigOutputs.addValues(dtig.Helpers.pack(anyValue));
   end
@@ -278,7 +281,7 @@ DTIG_ELSE
     reference = references.get(i);
     handle = getSimulinkBlockHandle(strcat(modelName, "/", string(reference)), true);
     if handle < 0
-      returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown output: ", reference));
+      returnValue = createReturn(dtig.EReturnCode.UNKNOWN_OPTION, strcat("Unknown parameter: ", reference));
       return;
     end
 
@@ -290,9 +293,9 @@ DTIG_ELSE
     elseif string(reference) == DTIG_STR(DTIG_ITEM_NAME)
     DTIG_END_IF
     DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_STRING)
-      param_value = get_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE));
+      param_value = get_param(handle, DTIG_TO_TYPE(DTIG_ITEM_TYPE));
     DTIG_ELSE
-      param_value = eval(get_param(handle, DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)));
+      param_value = eval(get_param(handle, DTIG_TO_TYPE(DTIG_ITEM_TYPE)));
     DTIG_END_IF
       anyValue = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE).newBuilder().setValue(param_value);
     DTIG_END_FOR
@@ -309,8 +312,9 @@ DTIG_END_IF
 end
 
 <DTIG_CALLBACK(IMPORTS)>
-DTIG_IF(DTIG_INPUTS_LENGTH)
+global sm;
 
+DTIG_IF(DTIG_INPUTS)
 % Inputs
 DTIG_FOR(DTIG_INPUTS)
 global DTIG_ITEM_NAME;
@@ -320,8 +324,7 @@ DTIG_END_IF
 DTIG_END_FOR
 DTIG_END_IF
 
-DTIG_IF(DTIG_OUTPUTS_LENGTH)
-
+DTIG_IF(DTIG_OUTPUTS)
 % Outputs
 DTIG_FOR(DTIG_OUTPUTS)
 DTIG_IF(DTIG_ITEM_NAME IN DTIG_INPUTS_NAMES)
@@ -335,8 +338,7 @@ DTIG_END_IF
 DTIG_END_FOR
 DTIG_END_IF
 
-DTIG_IF(DTIG_PARAMETERS_LENGTH)
-
+DTIG_IF(DTIG_PARAMETERS)
 % Parameters
 DTIG_FOR(DTIG_PARAMETERS)
 global DTIG_ITEM_NAME;

@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 // TODO: This are platform specific
 #include <arpa/inet.h>
@@ -42,9 +43,8 @@ char mBuffer[1024] = {0};
 
 // Parameter handles
 DTIG_FOR(DTIG_PARAMETERS)
-rti1516::ObjectClassHandle mAttrDTIG_ITEM_NAME;
-rti1516::ObjectInstanceHandle mPDTIG_ITEM_NAME;
-std::map<std::string, rti1516::AttributeHandle> mPsDTIG_ITEM_NAME;
+rti1516::InteractionClassHandle mPDTIG_ITEM_NAME;
+std::map<std::string, rti1516::ParameterHandle> mPsDTIG_ITEM_NAME;
 DTIG_END_FOR
 
 // Input handles
@@ -66,13 +66,17 @@ enum class State
   STOP = 2
 } mState;
 
+bool mRun = true;
+std::thread mThread;
 std::mutex mMutex;
-std::condition_variable mCv;
 
 <DTIG_METHOD(PRIVATE)>
 
 std::wstring convertStringToWstring(const std::string& str);
 rti1516::VariableLengthData toVariableLengthData(const char* s);
+
+int PrintMenuAndGetOption();
+void RunMenu();
 
 // ==============================
 // Model specific calls
@@ -90,37 +94,37 @@ DTIG>CALLBACK(RUNCLIENT)
 // Generated methods
 // Parameters
 DTIG_FOR(DTIG_PARAMETERS)
-void getAttributeDTIG_ITEM_NAME();
-void setAttributeDTIG_ITEM_NAME(const rti1516::AttributeHandleValueMap& handles);
-std::string getHandleDTIG_ITEM_NAME(const rti1516::AttributeHandle& handle) const;
-rti1516::AttributeHandleValueMap AttributeMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
+void GetParameterDTIG_ITEM_NAME();
+void SetParameterDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles);
+std::string GetHandleDTIG_ITEM_NAME(const rti1516::ParameterHandle& handle) const;
+rti1516::ParameterHandleValueMap ParameterFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
 DTIG_END_FOR
 
 // Inputs
 DTIG_FOR(DTIG_INPUTS)
-DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE) ProtoInputFromDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles);
+void SetInputDTIG_ITEM_NAME(const rti1516::ParameterHandleValueMap& handles);
 DTIG_END_FOR
 
 // Outpus
 DTIG_FOR(DTIG_OUTPUTS)
-rti1516::ParameterHandleValueMap ParameterMapFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
+rti1516::ParameterHandleValueMap OutputFromDTIG_ITEM_NAME(const google::protobuf::Any& anyMessage);
 DTIG_END_FOR
+
+void InteractionReceived(rti1516::InteractionClassHandle theInteraction, const rti1516::ParameterHandleValueMap& theParameterValues);
 
 // ==============================
 // Common calls
 void waitForUser();
 void enableTimePolicy();
 void publishAndSubscribe();
-void updateAttributeValues(rti1516::ObjectInstanceHandle objectHandle);
 void sendInteraction();
 void advanceTime(double timestep);
 
-void registerObjects();
-void deleteObjects();
-
-std::vector<double> forceVector = {};
-
 dtig::MReturnValue SendMessage(const google::protobuf::Message& message);
+
+DTIG_IF(DTIG_FORMALISM == DTIG_FORMALISM_DISCRETE)
+void DiscreteTimeAdvance();
+DTIG_END_IF
 
 template<typename T>
 rti1516::VariableLengthData toData(const T* s)
@@ -147,6 +151,11 @@ T fromData(rti1516::VariableLengthData data)
   return *(T*)data.data();
 }
 
+std::string fromData(rti1516::VariableLengthData data)
+{
+  return std::string((char*)data.data(), data.size());
+}
+
 <DTIG_CALLBACK(RUNCLIENT)>
 bool RunModel();
 
@@ -166,7 +175,7 @@ void SetInputs(const rti1516::InteractionClassHandle& interaction, const rti1516
 void GetOutput();
 
 <DTIG_CALLBACK(SET_PARAMETER)>
-void SetParameters(const rti1516::ObjectInstanceHandle& object, const rti1516::AttributeHandleValueMap& attributes);
+void SetParameters();
 
 <DTIG_CALLBACK(GET_PARAMETER)>
-void GetParameter(const ObjectInstanceHandle& handler);
+void GetParameter(const rti1516::InteractionClassHandle& handler);

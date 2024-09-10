@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+from tools.git import Git
 from common.logging import *
 from tools.file_system import *
 from common.result import VoidResult
@@ -74,7 +75,7 @@ def install_protoc(force_install : bool = False) -> VoidResult:
     version = f'v{PROTOBUF_VERSION}'
 
     if not os.path.isdir(repo_dir):
-        cloned = git.Git(url).clone(repo_dir, branch=version)
+        cloned = Git(url).clone(repo_dir, branch=version)
         if not cloned:
             return cloned
 

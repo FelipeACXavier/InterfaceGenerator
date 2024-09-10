@@ -1,15 +1,18 @@
 <DTIG_CALLBACK(IMPORTS)>
-FREECADPATH = '/usr/lib/freecad-python3/lib/'
-FREECADFEMPATH = '/usr/lib/freecad/Mod/Fem/'
-FREECADPYSIDEPATH = '/usr/share/freecad/Ext/'
-DISTPACKAGESPATH = '/usr/lib/python3/dist-packages/'
-
 import re
 import sys
+import csv
+
+# Should this should be modified with the env?
+PATH='/media/felaze/NotAnExternalDrive/Projects/squashfs-root/usr/'
+FREECADPATH = PATH + 'lib/'
+FREECADFEMPATH = PATH + 'Mod/Fem/'
+FREECADPYSIDEPATH = PATH + 'Ext/'
+
+
 sys.path.append(FREECADPATH)
 sys.path.append(FREECADFEMPATH)
 sys.path.append(FREECADPYSIDEPATH)
-sys.path.append(DISTPACKAGESPATH)
 
 import FreeCAD, FreeCADGui, Part
 import ObjectsFem
@@ -253,7 +256,7 @@ def set_inputs(reference, any_value):
         # If force already exists, use that
         constraint = self.get_object(reference)
         if not constraint:
-            constraint = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(self.app, reference)
+            constraint = DTIG_TO_TYPE(DTIG_ITEM_TYPE)(self.app, reference)
 
         obj_ref = self.app.getObject(value.object.value)
         if not obj_ref:
@@ -279,16 +282,17 @@ def set_inputs(reference, any_value):
             # If force already exists, use that
             constraint = self.get_object(reference)
             if not constraint:
-                # constraint = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(self.app, reference)
+                # constraint = DTIG_TO_TYPE(DTIG_ITEM_TYPE)(self.app, reference)
                 constraint = ObjectsFem.makeConstraintForce(self.app, reference)
 
-            # obj_ref = self.app.getObject("Box")
-            # if not obj_ref:
-            #     return self.return_code(dtig_code.UNKNOWN_OPTION, f"Unknown output: {reference}")
+            obj_ref = self.app.getObject("Box")
+            if not obj_ref:
+                return self.return_code(dtig_code.UNKNOWN_OPTION, f"Unknown output: {reference}")
 
-            # constraint.References = [(obj_ref, "Face2")]
-            # reverse, direction = self.direction_to_freecad(value.direction.value)
             print(f"Setting force magnitude to: {value.value}")
+
+            constraint.References = [(obj_ref, "Face2")]
+            # reverse, direction = self.direction_to_freecad(value.direction.value)
             constraint.Direction = (self.app.getObject(f'Z_Axis'), [""])
             constraint.Reversed = True
             constraint.Force = value.value
@@ -299,6 +303,9 @@ def set_inputs(reference, any_value):
             self.app.save()
 
             self.force_update = True
+
+        with open('force.csv', 'a') as file:
+            file.write(f'{value.value}\n')
 
         DTIG_END_IF
 
@@ -388,7 +395,7 @@ def set_parameters(reference, any_value):
         # If object already exists, use that
         parameter = self.get_object(reference)
         if not parameter:
-            parameter = DTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)(self.app, reference)
+            parameter = DTIG_TO_TYPE(DTIG_ITEM_TYPE)(self.app, reference)
 
         DTIG_IF(DTIG_ITEM_TYPE == TYPE_FORCE)
 

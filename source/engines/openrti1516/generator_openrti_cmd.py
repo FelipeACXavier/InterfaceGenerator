@@ -1,4 +1,5 @@
 import os
+import re
 
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from interface.cpp_generator import HppGenerator, CppGenerator
 engine_folder = os.path.dirname(__file__)
 template_folder = engine_folder + "/templates"
 
-class ClientGeneratorOpenRTI1516e():
+class ClientGeneratorRTI1516CMD():
     def __init__(self, output_file):
         self.output_file = output_file
 
@@ -33,10 +34,10 @@ class ClientGeneratorOpenRTI1516e():
 
         # Federate generators
         federate_hpp = HppGeneratorRTI1516(federate_header)
-        federate_hpp.common_template_file = template_folder + "/federate_template.h"
+        federate_hpp.common_template_file = template_folder + "/cmd_federate_template.h"
 
         federate_cpp = CppGeneratorRTI1516(federate_source, Path(federate_header).name)
-        federate_cpp.common_template_file = template_folder + "/federate_template.cpp"
+        federate_cpp.common_template_file = template_folder + "/cmd_federate_template.cpp"
 
         # Ambassador generators
         ambassador_hpp = HppGeneratorRTI1516(ambassador_header)
@@ -74,7 +75,7 @@ class ClientGeneratorOpenRTI1516e():
 
         return VoidResult()
 
-class HppGeneratorRTI1516e(HppGenerator):
+class HppGeneratorRTI1516(HppGenerator):
     def __init__(self, output_file):
         super().__init__(output_file)
 
@@ -94,7 +95,7 @@ class HppGeneratorRTI1516e(HppGenerator):
 
         return super().parse_dtig_language(parser=dtig_parser)
 
-class CppGeneratorRTI1516e(CppGenerator):
+class CppGeneratorRTI1516(CppGenerator):
     def __init__(self, output_file, header_name = None):
         super().__init__(output_file, header_name)
 

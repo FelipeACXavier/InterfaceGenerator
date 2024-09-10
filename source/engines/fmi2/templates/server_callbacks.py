@@ -3,6 +3,7 @@ from fmpy import read_model_description, extract
 from fmpy.fmi2 import FMU2Slave
 from fmpy.util import plot_result
 
+import csv
 import shutil
 import numpy as np
 
@@ -38,7 +39,6 @@ def parse_start(message) -> Message:
         self.stop_time = message.stop_time.value
 
     if message.HasField("step_size"):
-        # TODO: Add support for micro steps
         self.step_size = message.step_size.step
 
     # For now, we accept either continuous or stepped simulation
@@ -160,7 +160,7 @@ def run_model() -> None:
 
             outputs = self.fmu.getReal(self.value_references.values())[1:]
             rows.append((time, *outputs))
-
+            sleep(0.025)
             with self.condition:
                 if self.mode == dtig_run_mode.STEPPED and self.state != dtig_state.STOPPED:
                     self.state = dtig_state.WAITING
@@ -172,7 +172,10 @@ def run_model() -> None:
                 self.state = dtig_state.IDLE
 
         if len(rows) > 0:
-            # convert the results to a structured NumPy array
+            with open("fmi.csv", "w") as file:
+                writer = csv.writer(file, delimiter=',')
+                writer.writerows(rows)
+        #     # convert the results to a structured NumPy array
             result = np.array(rows, dtype=np.dtype([(k, np.float64) for k in self.value_references.keys()]))
             plot_result(result)
 
@@ -198,7 +201,7 @@ def set_inputs(reference, any_value):
         value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
         if not any_value.Unpack(value):
             return self.return_code(dtig_code.FAILURE, f"Failed to unpack value: {reference}")
-        self.fmu.setDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([self.value_references[reference]], [value.value])
+        self.fmu.setDTIG_TO_TYPE(DTIG_ITEM_TYPE)([self.value_references[reference]], [value.value])
         return self.return_code(dtig_code.SUCCESS)
 
     DTIG_END_FOR
@@ -220,7 +223,7 @@ def get_outputs(references):
         elif reference == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
             any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-            any_value.value = self.fmu.getDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([self.value_references[reference]])[0]
+            any_value.value = self.fmu.getDTIG_TO_TYPE(DTIG_ITEM_TYPE)([self.value_references[reference]])[0]
         DTIG_END_FOR
         else:
             return self.return_code(dtig_code.UNKNOWN_OPTION, f"Unknown output: {reference}")
@@ -249,7 +252,7 @@ def set_parameters(reference, any_value):
         value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
         if not any_value.Unpack(value):
             return self.return_code(dtig_code.FAILURE, f"Failed to unpack value: {reference}")
-        self.fmu.setDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([self.value_references[reference]], [value.value])
+        self.fmu.setDTIG_TO_TYPE(DTIG_ITEM_TYPE)([self.value_references[reference]], [value.value])
         return self.return_code(dtig_code.SUCCESS)
 
     DTIG_END_FOR
@@ -271,7 +274,7 @@ def get_parameter(references):
         elif reference == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
             any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
-            any_value.value = self.fmu.getDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([self.value_references[reference]])[0]
+            any_value.value = self.fmu.getDTIG_TO_TYPE(DTIG_ITEM_TYPE)([self.value_references[reference]])[0]
         DTIG_END_FOR
         else:
             return self.return_code(dtig_code.UNKNOWN_OPTION, f"Unknown output: {reference}")
@@ -294,7 +297,7 @@ def store_parameters():
         DTIG_ELSE
         elif key == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
-            value = self.fmu.getDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([ref])[0]
+            value = self.fmu.getDTIG_TO_TYPE(DTIG_ITEM_TYPE)([ref])[0]
             self.parameters[ref] = value
         DTIG_END_FOR
     DTIG_END_IF
@@ -309,6 +312,6 @@ def load_parameters():
         DTIG_ELSE
         elif key == DTIG_STR(DTIG_ITEM_NAME):
         DTIG_END_IF
-            self.fmu.setDTIG_TYPE_TO_FUNCTION(DTIG_ITEM_TYPE)([ref], [self.parameters[ref]])
+            self.fmu.setDTIG_TO_TYPE(DTIG_ITEM_TYPE)([ref], [self.parameters[ref]])
         DTIG_END_FOR
     DTIG_END_IF

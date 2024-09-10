@@ -32,9 +32,9 @@ class ServerGenerator(GeneratorBase):
             "/templates/python_server_template.py"
 
         LOG_DEBUG(f'Parsing common template: {self.common_template_file}')
-        formatting = python.format(self.common_template_file)
-        if not formatting.is_success():
-            return formatting
+        # formatting = python.format(self.common_template_file)
+        # if not formatting.is_success():
+        #     return formatting
 
         # First, parse the common interface template
         data = python.read_file(self.common_template_file)
@@ -265,9 +265,6 @@ class ClientGenerator(GeneratorBase):
             "/templates/python_client_template.py"
 
         LOG_DEBUG(f'Parsing common template: {self.common_template_file}')
-        formatting = python.format(self.common_template_file)
-        if not formatting.is_success():
-            return formatting
 
         # First, parse the common interface template
         data = python.read_file(self.common_template_file)

@@ -85,9 +85,9 @@ class Evaluator(Transformer):
         elif op == "!=":
             return left != right
         elif op == "IN":
-            return left in right
+            return (right) and (left in right)
         elif op == "NOT IN":
-            return left not in right
+            return (not right) or (left not in right)
         elif op == "IS":
             return left is right
         elif op == "IS NOT":
@@ -551,7 +551,7 @@ if __name__ == "__main__":
 
     start_logger(LogLevel.TRACE)
     config = JsonConfiguration()
-    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/freecad_config.json")
+    config.parse("/media/felaze/NotAnExternalDrive/TUe/Graduation/code/InterfaceGenerator/experiments/combined/fmi_config.json")
 
     p = Parser(config)
 
@@ -561,32 +561,15 @@ if __name__ == "__main__":
     p.to_string = lambda variable_type: f'\"{variable_type}\"'
 
     text = """
-DTIG_DEF DTIG_SET_DEFAULT(TYPE)
-if DTIG_STR(DTIG>TYPE) in default_value:
-    info_DTIG_ITEM_NAME.default.DTIG>TYPE = default_value[DTIG_STR(DTIG>TYPE)]
-DTIG_END_DEF
-
-DTIG_FOR(DTIG_PARAMETERS)
-DTIG_IF(HAS DTIG_ITEM_DEFAULT)
-DTIG_IF(DTIG_ITEM_TYPE == DTIG_TYPE_FORCE OR DTIG_ITEM_TYPE == DTIG_TYPE_FIXTURE)
-default_value = DTIG_ITEM_DEFAULT
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_OBJECT)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_MAGNITUDE)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_REFERENCE)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_DIRECTION)
-DTIG_ELSE_IF(DTIG_ITEM_TYPE == DTIG_TYPE_MATERIAL)
-default_value = DTIG_ITEM_DEFAULT
-DTIG_SET_DEFAULT(DTIG_TYPE_MATERIAL)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_STATE)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_NAME)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_YOUNGS_MODULUS)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_POISSON_RATIO)
-DTIG_SET_DEFAULT(DTIG_TYPE_PROP_DENSITY)
-DTIG_ELSE
-info_DTIG_ITEM_NAME.default.value = DTIG_STR(DTIG_ITEM_DEFAULT)
-DTIG_END_IF
-DTIG_END_IF
-DTIG_END_FOR
+    DTIG_FOR(DTIG_PARAMETERS)
+    DTIG_IF(DTIG_INDEX == 0)
+    if reference == DTIG_STR(DTIG_ITEM_NAME):
+    DTIG_ELSE
+    elif reference == DTIG_STR(DTIG_ITEM_NAME):
+    DTIG_END_IF
+        any_value = DTIG_TO_PROTO_MESSAGE(DTIG_ITEM_TYPE)
+        any_value.value = self.fmu.getDTIG_TO_TYPE(DTIG_ITEM_TYPE)([self.value_references[reference]])[0]
+    DTIG_END_FOR
 """
 
     LOG_INFO(f'{p.parse(text)}')

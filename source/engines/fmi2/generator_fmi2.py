@@ -24,21 +24,21 @@ class ServerGeneratorFMI2(ServerGenerator):
 
     def type_to_fmi_function(self, variable_type):
         if variable_type == TYPE_FLOAT_32:
-            return"Real"
+            return "Real"
         elif variable_type == TYPE_FLOAT_64:
-            return"Real"
+            return "Real"
         elif variable_type == TYPE_INT_32:
-            return"Integer"
+            return "Integer"
         elif variable_type == TYPE_INT_64:
-            return"Integer"
+            return "Integer"
         elif variable_type == TYPE_UINT_32:
-            return"Integer"
+            return "Integer"
         elif variable_type == TYPE_UINT_64:
-            return"Integer"
+            return "Integer"
         elif variable_type == TYPE_STRING:
-            return"String"
+            return "String"
         elif variable_type == TYPE_BOOL:
-            return"Boolean"
+            return "Boolean"
 
     def parse_dtig_language(self, parser=None):
         from language import parser
